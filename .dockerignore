@@ -1,20 +1,22 @@
 # Prevent host-specific artifacts from being copied into Docker build contexts
 
 # Client dependencies and build outputs
-src/Client/node_modules
-src/Client/dist
-src/Client/.vite
-src/Client/.fable
-src/Client/.vscode
-src/Client/.vs
+Client/node_modules
+Client/dist
+Client/.vite
+Client/.fable
+Client/.vscode
+Client/.vs
 
 # Server/Shared/Entity build outputs
-src/Server/bin
-src/Server/obj
-src/Shared/bin
-src/Shared/obj
-src/Entity/bin
-src/Entity/obj
+Backend/Server/bin
+Backend/Server/obj
+Backend/Entity/Migrations/bin
+Backend/Entity/Migrations/obj
+Shared/bin
+Shared/obj
+Backend/Entity/bin
+Backend/Entity/obj
 
 # Top-level caches (safety)
 node_modules
@@ -27,5 +29,4 @@ dist
 Thumbs.db
 .idea/
 .vscode/
-
-
+.git

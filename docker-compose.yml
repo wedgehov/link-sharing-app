@@ -17,14 +17,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  backend:
+  app:
     build:
       context: .
-      dockerfile: src/Server/Dockerfile
-    container_name: linksharing_backend
+      dockerfile: Dockerfile
+    container_name: linksharing_app
     restart: always
     ports:
-      - "5199:8080" # Map container's HTTP port 8080 to host's 5199
+      - "5200:8080" # Unified app serves API + frontend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=linksharing;Username=app;Password=secret
@@ -32,19 +32,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-
-  frontend:
-    build:
-      context: .
-      dockerfile: src/Client/Dockerfile
-    container_name: linksharing_frontend
-    restart: always
-    ports:
-      - "5173:80" # Map container's Nginx port 80 to host's 5173
-    environment:
-      - API_URL=http://backend:8080
-    depends_on:
-      - backend
 
 volumes:
   postgres_data:

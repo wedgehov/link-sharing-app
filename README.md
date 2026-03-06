@@ -121,7 +121,7 @@ This project uses Nix and Docker to provide a fully reproducible development env
     ```
     Access:
     -   **Frontend:** http://localhost:5173
-    -   **Backend (HTTP):** http://localhost:5199
+    -   **Backend (HTTP):** http://localhost:5200
 
 ### Local Kubernetes Development with Tilt (TODO)
 
@@ -134,7 +134,7 @@ This setup provides a high-fidelity development environment that closely matches
 
 ## Development Workflow & Architectural Approach
 
-This project is built using a **Contract-First** approach. The `src/Shared` project defines the API contract (F# record types and interfaces) that acts as a source of truth for frontend-backend communication. This enables parallel development and reduces integration errors.
+This project is built using a **Contract-First** approach. The `Shared` project defines the API contract (F# record types and interfaces) that acts as a source of truth for frontend-backend communication. This enables parallel development and reduces integration errors.
 
 The frontend can be developed and tested independently of the backend using a mock API.
 
@@ -178,7 +178,7 @@ This project follows a component-driven development methodology, where the UI is
 
 **Launching the Gallery**
 
-To view the in-app component gallery, run the dedicated script from the `src/Client` directory:
+To view the in-app component gallery, run the dedicated script from the `Client` directory:
 ```bash
 bun run dev:gallery
 ```
@@ -213,7 +213,7 @@ The goal is a comprehensive suite covering the entire application stack, from pu
 
 **Backend Testing:**
 
--   **Unit Tests:** Will test business logic in `src/Server` in isolation using an in-memory database provider.
+-   **Unit Tests:** Will test business logic in `Backend/Server` in isolation using an in-memory database provider.
 -   **Integration Tests:** Will verify API endpoints against a real PostgreSQL database spun up using Testcontainers.
 
 **Frontend Testing:**
@@ -235,15 +235,15 @@ dotnet test
 
 This project uses EF Core for a **Code-First** approach to database management.
 
--   **Creating Migrations:** When you change an entity model in `src/Entity`, create a new migration by running the following command from the repository root:
+-   **Creating Migrations:** When you change an entity model in `Backend/Entity`, create a new migration by running the following command from the repository root:
     ```bash
-    dotnet ef migrations add YourMigrationName --project src/Server/DbMigrations --startup-project src/Server
+    dotnet ef migrations add YourMigrationName --project Backend/Entity/Entity.csproj --startup-project Backend/Server/backend.fsproj --output-dir Migrations
     ```
 -   **Applying Migrations:**
     - Local (Docker Compose): The backend applies pending migrations automatically on startup (with retry) when running via `docker compose`.
     - Manual (optional during development):
       ```bash
-      dotnet ef database update --project src/Server/DbMigrations --startup-project src/Server
+      dotnet ef database update --project Backend/Entity/Entity.csproj --startup-project Backend/Server/backend.fsproj
       ```
 
 ## References
