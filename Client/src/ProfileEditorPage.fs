@@ -4,7 +4,8 @@ open System
 open Feliz
 open Elmish
 open Shared.SharedModels
-open ApiClient
+open Shared.Api
+open ClientShared
 
 type ProfileForm = {
   FirstName: string
@@ -26,16 +27,16 @@ type Model = {State: State; PreviewLinks: Link list}
 
 type Msg =
   | LoadProfile
-  | ProfileLoaded of Result<UserProfile, string>
+  | ProfileLoaded of Result<UserProfile, AppError>
   | LoadLinks
-  | LinksLoaded of Result<Link list, string>
+  | LinksLoaded of Result<Link list, AppError>
   | SetFirstName of string
   | SetLastName of string
   | SetDisplayEmail of string
   | SetProfileSlug of string
   | SetAvatarUrl of string
   | Save
-  | SaveResult of Result<unit, string>
+  | SaveResult of Result<unit, AppError>
 
 let private toForm (p: UserProfile) : ProfileForm = {
   FirstName = p.FirstName
@@ -74,17 +75,18 @@ let init () : Model * Cmd<Msg> =
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadProfile, _ ->
-    let load () = api.Profile.GetProfile ()
+    let load () = ApiClient.ProfileApi.GetProfile ()
     {model with State = Loading},
-    Cmd.OfAsync.either load () ProfileLoaded (fun ex -> Result.Error ex.Message |> ProfileLoaded)
+    Cmd.OfAsync.either load () ProfileLoaded (asUnexpected ProfileLoaded)
 
   | ProfileLoaded (Result.Ok profile), _ -> {model with State = Loaded (toForm profile)}, Cmd.none
 
-  | ProfileLoaded (Result.Error err), _ -> {model with State = Error err}, Cmd.none
+  | ProfileLoaded (Result.Error err), _ ->
+    {model with State = Error (appErrorToMessage err)}, Cmd.none
 
   | LoadLinks, _ ->
-    let load () = api.Links.GetLinks ()
-    model, Cmd.OfAsync.either load () LinksLoaded (fun ex -> Result.Error ex.Message |> LinksLoaded)
+    let load () = ApiClient.LinkApi.GetLinks ()
+    model, Cmd.OfAsync.either load () LinksLoaded (asUnexpected LinksLoaded)
 
   | LinksLoaded (Result.Ok links), _ -> {model with PreviewLinks = links}, Cmd.none
 
@@ -98,16 +100,19 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | Save, Loaded form ->
     let dto = toDto form
-    let save () = api.Profile.SaveProfile dto
+    let save () = ApiClient.ProfileApi.SaveProfile dto
     let saving = {form with IsSaving = true; Error = None; Saved = false}
     {model with State = Loaded saving},
-    Cmd.OfAsync.either save () SaveResult (fun ex -> SaveResult (Result.Error ex.Message))
+    Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
 
   | SaveResult (Result.Ok ()), Loaded form ->
     {model with State = Loaded {form with IsSaving = false; Saved = true}}, Cmd.none
 
   | SaveResult (Result.Error err), Loaded form ->
-    {model with State = Loaded {form with IsSaving = false; Error = Some err; Saved = false}}, Cmd.none
+    {model with
+        State =
+          Loaded {form with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}},
+    Cmd.none
 
   | _, _ -> model, Cmd.none
 

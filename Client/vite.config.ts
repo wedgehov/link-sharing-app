@@ -5,8 +5,6 @@ import fable from "vite-plugin-fable";
 import { qrcode } from "vite-plugin-qrcode";
 
 export default defineConfig(() => {
-  const useMock = process.env.VITE_USE_MOCK_API === 'true';
-
   return {
     plugins: [
       fable({
@@ -18,7 +16,7 @@ export default defineConfig(() => {
     ],
     server: {
       host: true, // so LAN devices can access
-      proxy: useMock ? undefined : {
+      proxy: {
         '/api': {
           target: 'http://localhost:5200',
           changeOrigin: true,

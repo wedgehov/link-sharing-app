@@ -81,33 +81,14 @@ let seedDevelopmentData (db: Entity.AppDbContext) =
 
 let webApp: HttpHandler =
     choose [
-        subRoute
-            "/api/auth"
-            (choose [
-                POST >=> route "/register" >=> global.Auth.handleRegister
-                POST >=> route "/login" >=> global.Auth.handleLogin
-                POST >=> route "/logout" >=> global.Auth.handleLogout
-            ])
-        subRoute
-            "/api"
-            (global.Auth.requiresAuthentication
-             >=> choose [
-                 subRoute
-                     "/profile"
-                     (choose [
-                         GET >=> route "" >=> global.Profile.handleGetProfile
-                         PUT >=> route "" >=> global.Profile.handleSaveProfile
-                     ])
-                 subRoute
-                     "/links"
-                     (choose [
-                         GET >=> route "" >=> global.Links.handleGetLinks
-                         PUT >=> route "" >=> global.Links.handleSaveLinks
-                     ])
-             ])
-        subRoute
-            "/api/public"
-            (choose [ GET >=> routef "/preview/%s" global.Links.handleGetPreview ])
+        global.Auth.authApiHandler
+        routeStartsWith "/api/IProfileApi"
+        >=> global.Auth.requiresAuthentication
+        >=> global.Profile.profileApiHandler
+        routeStartsWith "/api/ILinkApi"
+        >=> global.Auth.requiresAuthentication
+        >=> global.Links.linksApiHandler
+        global.Links.publicApiHandler
         // Fallback for SPA routes so deep links resolve to index.html.
         fun next ctx ->
             let env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>()

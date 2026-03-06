@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Dtos.fs" />
+    <Compile Include="RemotingUtil.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Observability.fs" />
     <Compile Include="ErrorHandling.fs" />
@@ -19,6 +19,9 @@
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Fable.Remoting.Giraffe" Version="5.24.0" />
+    <PackageReference Include="Fable.Remoting.Server" Version="5.42.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling" Version="5.1.0" />
     <PackageReference Include="Giraffe" Version="7.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" Version="2.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">

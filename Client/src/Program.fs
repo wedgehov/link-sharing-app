@@ -6,13 +6,14 @@ open Elmish.Navigation
 open Elmish.UrlParser
 open Feliz
 open Shared.SharedModels
+open Shared.Api
 open Fable.Core.JsInterop
 open Routing // Import the new module
 
 // Main model - The Page DU is now removed from here.
 type Model = {
   Page: Page // This now refers to Routing.Page
-  User: Auth.User option
+  User: User option
   Login: LoginPage.Model
   Register: RegisterPage.Model
   Links: LinkEditorPage.Model
@@ -27,7 +28,7 @@ type Msg =
   | LinksMsg of LinkEditorPage.Msg
   | ProfileMsg of ProfileEditorPage.Msg
   | PreviewMsg of PreviewPage.Msg
-  | LoggedIn of Auth.User
+  | LoggedIn of User
   | LoggedOut
   | RequestLogout
 
@@ -36,7 +37,7 @@ let private isStartAuthenticated () =
   // Access Vite's import.meta.env from Fable
   let env: obj = Fable.Core.JsInterop.emitJsExpr () "import.meta.env"
   let v: obj = env?VITE_START_AUTHENTICATED
-  if isNull v || Json.isUndef v then
+  if isNull v || Fable.Core.JsInterop.emitJsExpr<bool> v "($0 === undefined)" then
     false
   else
     unbox<string> v = "true"
@@ -52,7 +53,6 @@ let pageParser: Parser<Page -> Page, _> =
     map (fun slug -> PreviewPage slug) (s "preview" </> str)
     map LoginPage (s "login")
     map RegisterPage (s "register")
-    map DevGallery (s "dev")
   ]
 
 let urlUpdate (result: Page option) (model: Model) : Model * Cmd<Msg> =
@@ -62,8 +62,7 @@ let urlUpdate (result: Page option) (model: Model) : Model * Cmd<Msg> =
       match requestedPage with
       | LoginPage
       | RegisterPage
-      | PreviewPage _
-      | DevGallery -> false
+      | PreviewPage _ -> false
       | _ -> true
 
     let isAuthenticated = model.User.IsSome
@@ -90,7 +89,6 @@ let urlUpdate (result: Page option) (model: Model) : Model * Cmd<Msg> =
       | PreviewPage slug ->
         let (previewModel, previewCmd) = PreviewPage.init slug
         {model with Preview = previewModel}, Cmd.map PreviewMsg previewCmd
-      | DevGallery -> model, Cmd.none
 
     {newModel with Page = actualPage}, cmd
 
@@ -107,7 +105,7 @@ let init (result: Option<Page>) : Model * Cmd<Msg> =
 
   let initialUser =
     if isStartAuthenticated () then
-      Some ({Id = 1; Email = "dev@example.com"}: Auth.User)
+      Some ({Id = 1; Email = "dev@example.com"}: User)
     else
       None
 
@@ -177,7 +175,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     let (newModel, navCmd) = urlUpdate (Some LoginPage) {model with User = None}
     newModel, navCmd
 
-  | RequestLogout -> model, Auth.logout (fun _ -> LoggedOut) // Call logout API
+  | RequestLogout ->
+    model,
+    Auth.logout (function
+      | Ok () -> LoggedOut
+      | Error _ -> LoggedOut)
 
 // View
 let view (model: Model) (dispatch: Msg -> unit) =
@@ -196,7 +198,6 @@ let view (model: Model) (dispatch: Msg -> unit) =
     | LinksPage -> LinkEditorPage.view model.Links (LinksMsg >> dispatch)
     | ProfilePage -> ProfileEditorPage.view model.Profile (ProfileMsg >> dispatch)
     | PreviewPage _ -> PreviewPage.view model.Preview (PreviewMsg >> dispatch)
-    | DevGallery -> DevGallery.view
     | LoginPage -> LoginPage.view model.Login (LoginMsg >> dispatch)
     | RegisterPage -> RegisterPage.view model.Register (RegisterMsg >> dispatch)
   ]

@@ -1,29 +1,13 @@
 module Header
 
 open Feliz
-open Fable.Core.JsInterop
-open Json
 open Browser.Dom
 open Routing // Import the new module
 
 let private formatPath = List.toArray >> String.concat "/" >> (fun s -> "#/" + s)
 
 let view (profileSlug: string option) =
-  let env: obj = emitJsExpr () "import.meta.env"
-  let v: obj = env?VITE_ENABLE_DEV_GALLERY
-  let devLink =
-    if isNull v || Json.isUndef v then
-      Html.none
-    else if unbox<string> v = "true" then
-      Html.a [
-        prop.className "text-preset-3-semibold text-purple-600 hover:text-purple-800"
-        prop.href (DevGallery |> pageToPath |> formatPath)
-        prop.text "Dev"
-      ]
-    else
-      Html.none
-
-  // Left group: brand (icon + text) and optional Dev link
+  // Left group: brand (icon + text)
   let leftGroup =
     let brand =
       Html.div [
@@ -41,7 +25,7 @@ let view (profileSlug: string option) =
       ]
     Html.div [
       prop.className "flex items-center gap-4"
-      prop.children [brand; devLink]
+      prop.children [brand]
     ]
 
   // Middle group: compact paired tabs (Links | Profile Details)

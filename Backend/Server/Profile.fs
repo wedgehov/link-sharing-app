@@ -4,12 +4,13 @@ open System
 open System.Text
 open System.Text.RegularExpressions
 open System.Globalization
-open Microsoft.AspNetCore.Http
-open Microsoft.EntityFrameworkCore
-open Giraffe
+open FsToolkit.ErrorHandling
 open Entity
+open Giraffe
+open Microsoft.EntityFrameworkCore
+open Microsoft.AspNetCore.Http
 open Shared.SharedModels
-open Dtos
+open Shared.Api
 
 let private removeDiacritics (input: string) : string =
     if String.IsNullOrWhiteSpace input then
@@ -147,56 +148,53 @@ let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
         return ()
     }
 
-let handleGetProfile: HttpHandler =
-    fun next ctx ->
-        task {
-            let db: AppDbContext = ctx.GetService<AppDbContext>()
-            let userId = Auth.getUserId ctx
-            let! profile = getProfile db userId
-            match profile with
-            | Some p ->
-                let profileDto: ProfileOutputDto = {
-                    firstName = if isNull p.FirstName then "" else p.FirstName
-                    lastName = if isNull p.LastName then "" else p.LastName
-                    displayEmail = if isNull p.DisplayEmail then "" else p.DisplayEmail
-                    profileSlug = p.ProfileSlug
-                    avatarUrl = if isNull p.AvatarUrl then "" else p.AvatarUrl
-                }
-                return! json profileDto next ctx
-            | None ->
-                // Return an empty/default profile rather than 404 to simplify first-run UX.
-                let dto: ProfileOutputDto = {
-                    firstName = ""
-                    lastName = ""
-                    displayEmail = ""
-                    profileSlug = ""
-                    avatarUrl = ""
-                }
-                return! json dto next ctx
-        }
+let private toSharedProfile (p: Entity.UserProfile) : UserProfile = {
+    FirstName = if isNull p.FirstName then "" else p.FirstName
+    LastName = if isNull p.LastName then "" else p.LastName
+    DisplayEmail =
+        if isNull p.DisplayEmail || String.IsNullOrWhiteSpace p.DisplayEmail then
+            None
+        else
+            Some p.DisplayEmail
+    ProfileSlug = if isNull p.ProfileSlug then "" else p.ProfileSlug
+    AvatarUrl =
+        if isNull p.AvatarUrl || String.IsNullOrWhiteSpace p.AvatarUrl then
+            None
+        else
+            Some p.AvatarUrl
+}
 
-let handleSaveProfile: HttpHandler =
-    fun next ctx ->
-        task {
-            let db: AppDbContext = ctx.GetService<AppDbContext>()
-            let userId = Auth.getUserId ctx
-            let! input = ctx.BindJsonAsync<ProfileInputDto>()
-            // Map DTO (strings) to shared model (options)
-            let dto: UserProfile = {
-                FirstName = input.firstName
-                LastName = input.lastName
-                DisplayEmail =
-                    if System.String.IsNullOrWhiteSpace input.displayEmail then
-                        None
-                    else
-                        Some input.displayEmail
-                ProfileSlug = input.profileSlug
-                AvatarUrl =
-                    if System.String.IsNullOrWhiteSpace input.avatarUrl then
-                        None
-                    else
-                        Some input.avatarUrl
-            }
-            do! saveProfile db userId dto
-            return! (setStatusCode 204 >=> text "") next ctx
-        }
+let private emptyProfile: UserProfile = {
+    FirstName = ""
+    LastName = ""
+    DisplayEmail = None
+    ProfileSlug = ""
+    AvatarUrl = None
+}
+
+let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
+    GetProfile =
+        fun () ->
+            Auth.requireUser ctx
+            <| fun userId ->
+                asyncResult {
+                    let db = ctx.GetService<AppDbContext>()
+                    let! profile = getProfile db userId |> Async.AwaitTask |> AsyncResult.ofAsync
+                    return profile |> Option.map toSharedProfile |> Option.defaultValue emptyProfile
+                }
+    SaveProfile =
+        fun profileDto ->
+            Auth.requireUser ctx
+            <| fun userId ->
+                asyncResult {
+                    let db = ctx.GetService<AppDbContext>()
+                    do!
+                        saveProfile db userId profileDto
+                        |> Async.AwaitTask
+                        |> AsyncResult.ofAsync
+                        |> AsyncResult.ignore
+                }
+}
+
+let profileApiHandler: HttpHandler =
+    RemotingUtil.handlerFromApi profileApiImplementation

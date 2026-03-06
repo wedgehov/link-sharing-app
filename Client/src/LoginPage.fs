@@ -2,7 +2,7 @@ module LoginPage
 
 open Elmish
 open Feliz
-open Shared.SharedModels
+open Shared.Api
 
 // Model
 type Model = {
@@ -24,7 +24,7 @@ type Msg =
   | SetEmail of string
   | SetPassword of string
   | AttemptLogin
-  | LoginResult of Result<Auth.User, exn>
+  | LoginResult of Result<User, AppError>
 
 // Update
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
@@ -32,12 +32,14 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | SetEmail email -> {model with Email = email}, Cmd.none
   | SetPassword pass -> {model with Password = pass}, Cmd.none
   | AttemptLogin ->
-    {model with IsLoading = true; Error = None}, Auth.login {email = model.Email; password = model.Password} LoginResult
+    {model with IsLoading = true; Error = None},
+    Auth.login {Email = model.Email; Password = model.Password} LoginResult
   | LoginResult (Ok user) ->
     // This message should be bubbled up to the main update function
     // to navigate to the todos page and store the user.
     {model with IsLoading = false}, Cmd.none
-  | LoginResult (Error ex) -> {model with IsLoading = false; Error = Some ex.Message}, Cmd.none
+  | LoginResult (Error err) ->
+    {model with IsLoading = false; Error = Some (Auth.appErrorToMessage err)}, Cmd.none
 
 // View
 let view (model: Model) (dispatch: Msg -> unit) =

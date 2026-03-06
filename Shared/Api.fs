@@ -1,23 +1,36 @@
 module Shared.Api
 
-open System
-open FSharp.Control
 open Shared.SharedModels
 
-type ProfileApi = {
-    GetProfile: unit -> Async<Result<UserProfile, string>>
-    SaveProfile: UserProfile -> Async<Result<unit, string>>
+type AppError =
+    | Unauthorized
+    | NotFound
+    | Conflict
+    | InvalidCredentials
+    | ValidationError of string
+    | Unexpected of string
+
+type User = { Id: int; Email: string }
+
+type LoginRequest = { Email: string; Password: string }
+
+type RegisterRequest = { Email: string; Password: string }
+
+type IAuthApi = {
+    Register: RegisterRequest -> Async<Result<User, AppError>>
+    Login: LoginRequest -> Async<Result<User, AppError>>
+    Logout: unit -> Async<Result<unit, AppError>>
+    GetCurrentUser: unit -> Async<Result<User, AppError>>
 }
 
-type LinkApi = {
-    GetLinks: unit -> Async<Result<Link list, string>>
-    SaveLinks: Link list -> Async<Result<unit, string>>
+type IProfileApi = {
+    GetProfile: unit -> Async<Result<UserProfile, AppError>>
+    SaveProfile: UserProfile -> Async<Result<unit, AppError>>
 }
 
-type PublicApi = { GetPreview: string -> Async<Result<UserProfile * Link list, string>> }
-
-type Api = {
-    Profile: ProfileApi
-    Links: LinkApi
-    Public: PublicApi
+type ILinkApi = {
+    GetLinks: unit -> Async<Result<Link list, AppError>>
+    SaveLinks: Link list -> Async<Result<unit, AppError>>
 }
+
+type IPublicApi = { GetPreview: string -> Async<Result<UserProfile * Link list, AppError>> }

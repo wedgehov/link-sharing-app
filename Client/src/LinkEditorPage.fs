@@ -4,8 +4,9 @@ open System
 open Feliz
 open Elmish
 open Shared.SharedModels
-open ApiClient
+open Shared.Api
 open Browser.Types
+open ClientShared
 
 // To handle edits and new items, we wrap the Link DTO
 // with a client-side ID for stable keys in the UI.
@@ -33,15 +34,15 @@ type Model = {State: State}
 
 type Msg =
   | LoadLinks
-  | LinksLoaded of Result<Link list, string>
+  | LinksLoaded of Result<Link list, AppError>
   | LoadProfileForMockup
-  | ProfileForMockupLoaded of Result<UserProfile, string>
+  | ProfileForMockupLoaded of Result<UserProfile, AppError>
   | AddNewLink
   | UpdateLinkPlatform of clientId: int * platform: Platform
   | UpdateLinkUrl of clientId: int * url: string
   | RemoveLink of clientId: int
   | SaveLinks
-  | SaveLinksResult of Result<unit, string>
+  | SaveLinksResult of Result<unit, AppError>
   | DragStart of clientId: int
   | DragOver of clientId: int
   | Drop
@@ -53,9 +54,9 @@ let init () : Model * Cmd<Msg> = {State = Loading}, Cmd.ofMsg LoadLinks
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadLinks, _ ->
-    let load () = api.Links.GetLinks ()
+    let load () = ApiClient.LinkApi.GetLinks ()
     {model with State = Loading},
-    Cmd.OfAsync.either load () LinksLoaded (fun ex -> Result.Error ex.Message |> LinksLoaded)
+    Cmd.OfAsync.either load () LinksLoaded (asUnexpected LinksLoaded)
 
   | LinksLoaded (Result.Ok links), _ ->
     let nextId = links.Length + 1
@@ -76,12 +77,13 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
     {model with State = newState}, Cmd.ofMsg LoadProfileForMockup
 
-  | LinksLoaded (Result.Error err), _ -> {model with State = Error err}, Cmd.none
+  | LinksLoaded (Result.Error err), _ ->
+    {model with State = Error (appErrorToMessage err)}, Cmd.none
 
   | LoadProfileForMockup, _ ->
-    let load () = api.Profile.GetProfile ()
+    let load () = ApiClient.ProfileApi.GetProfile ()
     model,
-    Cmd.OfAsync.either load () ProfileForMockupLoaded (fun ex -> Result.Error ex.Message |> ProfileForMockupLoaded)
+    Cmd.OfAsync.either load () ProfileForMockupLoaded (asUnexpected ProfileForMockupLoaded)
 
   | ProfileForMockupLoaded (Result.Ok profile), Loaded loadedState ->
     let avatarOpt =
@@ -152,17 +154,18 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | SaveLinks, Loaded loadedState ->
     let linksToSave = loadedState.Links |> List.map (fun item -> item.Link)
-    let save () = api.Links.SaveLinks linksToSave
+    let save () = ApiClient.LinkApi.SaveLinks linksToSave
     let savingState = {loadedState with IsSaving = true; Saved = false; Error = None}
     {model with State = Loaded savingState},
-    Cmd.OfAsync.either save () SaveLinksResult (fun ex -> SaveLinksResult (Result.Error ex.Message))
+    Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
 
   | SaveLinksResult (Result.Ok ()), Loaded loadedState ->
     let newState = {loadedState with IsSaving = false; Saved = true}
     {model with State = Loaded newState}, Cmd.none
 
   | SaveLinksResult (Result.Error err), Loaded loadedState ->
-    let newState = {loadedState with IsSaving = false; Error = Some err; Saved = false}
+    let newState =
+      {loadedState with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}
     {model with State = Loaded newState}, Cmd.none
 
   | DragStart clientId, Loaded loadedState ->

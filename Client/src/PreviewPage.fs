@@ -3,7 +3,8 @@ module PreviewPage
 open Feliz
 open Elmish
 open Shared.SharedModels
-open ApiClient
+open Shared.Api
+open ClientShared
 
 type State =
   | Loading
@@ -14,7 +15,7 @@ type Model = {Slug: string; State: State}
 
 type Msg =
   | Load
-  | LoadResult of Result<UserProfile * Link list, string>
+  | LoadResult of Result<UserProfile * Link list, AppError>
 
 let init (slug: string) : Model * Cmd<Msg> =
   {Slug = slug; State = Loading}, Cmd.ofMsg Load
@@ -22,10 +23,11 @@ let init (slug: string) : Model * Cmd<Msg> =
 let update msg model : Model * Cmd<Msg> =
   match msg with
   | Load ->
-    let load () = api.Public.GetPreview model.Slug
-    {model with State = Loading}, Cmd.OfAsync.either load () LoadResult (fun ex -> LoadResult (Result.Error ex.Message))
+    let load () = ApiClient.PublicApi.GetPreview model.Slug
+    {model with State = Loading}, Cmd.OfAsync.either load () LoadResult (asUnexpected LoadResult)
   | LoadResult (Result.Ok (profile, links)) -> {model with State = Loaded (profile, links)}, Cmd.none
-  | LoadResult (Result.Error err) -> {model with State = Error err}, Cmd.none
+  | LoadResult (Result.Error err) ->
+    {model with State = Error (appErrorToMessage err)}, Cmd.none
 
 let view model dispatch =
   match model.State with

@@ -2,7 +2,7 @@
 
 This is a full-stack solution to the [Link-sharing app challenge on Frontend Mentor](https://www.frontendmentor.io/challenges/linksharing-app-Fbt7yweGsT).
 
-This project implements a complete link-sharing application with a modern, end-to-end F# stack, containerized with Docker, and configured with a reproducible Nix development environment. It aims to follow common best practices for development workflows, mocking, and testing, and can be a useful starting point.
+This project implements a complete link-sharing application with a modern, end-to-end F# stack, containerized with Docker, and configured with a reproducible Nix development environment. It aims to follow common best practices for development workflows and testing, and can be a useful starting point.
 
 ## Table of contents
 
@@ -15,10 +15,10 @@ This project implements a complete link-sharing application with a modern, end-t
 - [Getting Started: The Development Environment](#getting-started-the-development-environment)
   - [Prerequisites](#prerequisites)
   - [Running Locally](#running-locally)
-- [Development Workflow & Frontend Mocking](#development-workflow--frontend-mocking)
-- [Architectural Deep Dive: A Reference for Mocking & Testing](#architectural-deep-dive-a-reference-for-mocking--testing)
+- [Development Workflow & Architecture](#development-workflow--architecture)
   - [Core Philosophy: Contract-First Development](#core-philosophy-contract-first-development)
-  - [The Mocking Strategy](#the-mocking-strategy)
+  - [Development Scripts](#development-scripts)
+  - [Public Profile Slugs](#public-profile-slugs)
   - [The Testing Strategy (TODO)](#the-testing-strategy-todo)
 - [Database Migrations](#database-migrations)
 - [References](#references)
@@ -68,6 +68,8 @@ This project is a full-stack application built entirely with F# and modern web t
 
 - **F#** with **ASP.NET Core**
 - **Giraffe** as a lightweight, functional web framework
+- **Fable.Remoting** for typed RPC between client and server
+- **FsToolkit.ErrorHandling** for typed, composable domain workflows
 - **Entity Framework Core** for data access (Code-First)
 - **PostgreSQL** as the relational database
 - **Cookie-based Authentication** for session management
@@ -76,10 +78,9 @@ This project is a full-stack application built entirely with F# and modern web t
 **DevOps & Tooling:**
 
 - **Docker & Docker Compose** for containerization and local environment consistency.
-- **Nginx** as a reverse proxy and for serving frontend static files in production.
 - **Nix** to create a reproducible development environment.
 - **Direnv** to automatically load the Nix shell.
-- **Bun** as the frontend package manager and toolkit.
+- **NPM** for frontend package management and scripts.
 - **GitHub Actions** for Continuous Integration: image build/push to GHCR (test jobs TODO).
 
 ## Deployment & GitOps
@@ -96,7 +97,7 @@ This project uses Nix and Docker to provide a fully reproducible development env
 
 ### Prerequisites
 
-1.  **Nix Package Manager:** Nix ensures that every developer uses the exact same versions of all tools (like the .NET SDK and Bun). Follow the [official installation guide](https://nixos.org/download.html).
+1.  **Nix Package Manager:** Nix ensures that every developer uses the exact same versions of all tools (like the .NET SDK and Node.js). Follow the [official installation guide](https://nixos.org/download.html).
 2.  **Direnv:** A shell extension that automatically loads the Nix environment when you enter the project directory. Please see the [official documentation](https://direnv.net/docs/hook.html) for installation instructions.
 3.  **Docker & Docker Compose:** Required to run the complete application stack, including the PostgreSQL database. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
@@ -113,7 +114,7 @@ This project uses Nix and Docker to provide a fully reproducible development env
     ```bash
     direnv allow
     ```
-    Your shell will now have the correct versions of `.NET`, `bun`, etc., available.
+    Your shell will now have the correct versions of `.NET`, `node`, `npm`, etc., available.
 
 3.  Run with Docker Compose:
     ```bash
@@ -132,67 +133,26 @@ For a more advanced development workflow that mirrors a production-like Kubernet
 
 This setup provides a high-fidelity development environment that closely matches production while maintaining a fast inner loop.
 
-## Development Workflow & Architectural Approach
+## Development Workflow & Architecture
+
+### Core Philosophy: Contract-First Development
 
 This project is built using a **Contract-First** approach. The `Shared` project defines the API contract (F# record types and interfaces) that acts as a source of truth for frontend-backend communication. This enables parallel development and reduces integration errors.
 
-The frontend can be developed and tested independently of the backend using a mock API.
+The app now uses **Fable.Remoting** end-to-end for API communication, with strongly-typed `AppError` domain errors shared across server and client. This removes manual JSON parsing and keeps transport concerns out of the page-level update logic.
 
-### Bun trust for vite-plugin-fable
-If Bun prompts about untrusted scripts when installing dependencies, this repo includes a Bun config to trust the Fable Vite plugin. A normal install is enough:
+### Development Scripts
 
-```bash
-bun install
-```
+The client can be run in the following modes:
 
-Under the hood, `.bunfig.toml` contains:
+| Script (`npm run <script>`) | Use Case |
+| :--- | :--- |
+| `dev` | Default local frontend development mode. |
+| `dev:authed` | Starts frontend with development auth state enabled. |
+| `build` | Creates a production frontend build. |
+| `preview` | Serves the built frontend for local verification. |
 
-```toml
-[install]
-trustedDependencies = ["vite-plugin-fable"]
-```
-
-If you prefer a one-off install without the config, you can run:
-
-```bash
-bun install --trust vite-plugin-fable
-```
-
-### Development Scripts & Modes
-
-The client can be run in several modes to streamline development by combining different API and authentication states.
-
-| Script (`bun run <script>`) | API Used | Authentication | Use Case |
-| :--- | :--- | :--- | :--- |
-| `dev` | Real API | Unauthenticated | Default mode. For working on public pages or logging in normally. |
-| `dev:authed` | Real API | Authenticated | For working on protected pages against the real backend without logging in. |
-| `dev:mock` | Mock API | Unauthenticated | For working on public pages against a predictable mock API. |
-| `dev:mock:authed` | Mock API | Authenticated | For working on protected pages in isolation, without a running backend. |
-| `dev:gallery` | Mock API | Authenticated | Runs the component dev gallery for isolated UI development. |
-
-These scripts work by setting Vite environment variables (`VITE_USE_MOCK_API`, `VITE_START_AUTHENTICATED`, and `VITE_ENABLE_DEV_GALLERY`) when running the `vite` command.
-
-### Component-Driven Development & The Dev Gallery
-
-This project follows a component-driven development methodology, where the UI is built from the "bottom-up," starting with individual components. A component gallery is a best practice that facilitates this approach by providing an environment to build, view, and test UI components in isolation [2].
-
-**Launching the Gallery**
-
-To view the in-app component gallery, run the dedicated script from the `Client` directory:
-```bash
-bun run dev:gallery
-```
-Then, navigate to `/#/dev` in your browser.
-
-**Our Lightweight Approach vs. Storybook**
-
-While [Storybook](https://storybook.js.org/) is the powerful, industry-standard tool for building component galleries [3], it can introduce significant configuration overhead. For this project, a pragmatic, lightweight solution was chosen: an in-app gallery that lives alongside the main application code.
-
-**Key advantages of this approach:**
-*   **Simplicity:** It requires no extra dependencies or complex setup.
-*   **Zero Production Cost:** The gallery is gated by the `VITE_ENABLE_DEV_GALLERY` environment variable. This ensures that the code for the gallery page and its route are completely removed from the production build via tree-shaking, having no impact on the final bundle size.
-
-This provides the core benefits of component isolation and a living style guide without the maintenance burden of a separate toolchain, striking a good balance for the project's scale.
+The development auth mode works via the `VITE_START_AUTHENTICATED` environment variable in Vite [1].
 
 ### Public Profile Slugs
 
@@ -249,5 +209,3 @@ This project uses EF Core for a **Code-First** approach to database management.
 ## References
 
 [1] Vite contributors, "Env Variables and Modes," *Vite*, [Online]. Available: https://vitejs.dev/guide/env-and-mode.html. [Accessed: Oct. 9, 2025].
-[2] "Component-Driven Development," *Component Driven,* [Online]. Available: https://www.componentdriven.org/. [Accessed: Oct. 10, 2025].
-[3] "Storybook: The UI component explorer," *Storybook,* [Online]. Available: https://storybook.js.org/docs/. [Accessed: Oct. 10, 2025].
