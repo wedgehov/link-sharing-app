@@ -62,24 +62,28 @@ let private emptyProfile: UserProfile = {
     AvatarUrl = None
 }
 
+let private getProfileByUserId (ctx: HttpContext) (userId: int) =
+    asyncResult {
+        let db = ctx.GetService<AppDbContext>()
+        let! profile = getProfile db userId |> Async.AwaitTask
+        return profile |> Option.map toSharedProfile |> Option.defaultValue emptyProfile
+    }
+
+let private saveProfileByUserId (ctx: HttpContext) (userId: int) (profileDto: UserProfile) =
+    asyncResult {
+        let db = ctx.GetService<AppDbContext>()
+        do! saveProfile db userId profileDto |> Async.AwaitTask
+    }
+
 let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
     GetProfile =
-        fun () ->
-            Auth.requireUser ctx
-            <| fun userId ->
-                asyncResult {
-                    let db = ctx.GetService<AppDbContext>()
-                    let! profile = getProfile db userId |> Async.AwaitTask
-                    return profile |> Option.map toSharedProfile |> Option.defaultValue emptyProfile
-                }
+        fun userId ->
+            Auth.requireAuthorization ctx userId
+            <| fun authorizedUserId -> getProfileByUserId ctx authorizedUserId
     SaveProfile =
-        fun profileDto ->
-            Auth.requireUser ctx
-            <| fun userId ->
-                asyncResult {
-                    let db = ctx.GetService<AppDbContext>()
-                    do! saveProfile db userId profileDto |> Async.AwaitTask
-                }
+        fun userId profileDto ->
+            Auth.requireAuthorization ctx userId
+            <| fun authorizedUserId -> saveProfileByUserId ctx authorizedUserId profileDto
 }
 
 let profileApiHandler: HttpHandler =

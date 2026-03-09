@@ -30,7 +30,7 @@ type State =
   | Loaded of LoadedState
   | Error of string
 
-type Model = {State: State}
+type Model = {UserId: int; State: State}
 
 type Msg =
   | LoadLinks
@@ -49,14 +49,14 @@ type Msg =
   | ToggleDropdown of clientId: int
   | SelectPlatform of clientId: int * platform: Platform
 
-let init () : Model * Cmd<Msg> = {State = Loading}, Cmd.ofMsg LoadLinks
+let init (userId: int) : Model * Cmd<Msg> =
+  {UserId = userId; State = Loading}, Cmd.ofMsg LoadLinks
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadLinks, _ ->
-    let load () = ApiClient.LinkApi.GetLinks ()
-    {model with State = Loading},
-    Cmd.OfAsync.either load () LinksLoaded (asUnexpected LinksLoaded)
+    let load () = ApiClient.LinkApi.GetLinks model.UserId
+    {model with State = Loading}, Cmd.OfAsync.either load () LinksLoaded (asUnexpected LinksLoaded)
 
   | LinksLoaded (Result.Ok links), _ ->
     let nextId = links.Length + 1
@@ -77,13 +77,12 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
     {model with State = newState}, Cmd.ofMsg LoadProfileForMockup
 
-  | LinksLoaded (Result.Error err), _ ->
-    {model with State = Error (appErrorToMessage err)}, Cmd.none
+  | LinksLoaded (Result.Error err), _ -> {model with State = Error (appErrorToMessage err)}, Cmd.none
 
   | LoadProfileForMockup, _ ->
-    let load () = ApiClient.ProfileApi.GetProfile ()
-    model,
-    Cmd.OfAsync.either load () ProfileForMockupLoaded (asUnexpected ProfileForMockupLoaded)
+    let load () =
+      ApiClient.ProfileApi.GetProfile model.UserId
+    model, Cmd.OfAsync.either load () ProfileForMockupLoaded (asUnexpected ProfileForMockupLoaded)
 
   | ProfileForMockupLoaded (Result.Ok profile), Loaded loadedState ->
     let avatarOpt =
@@ -154,18 +153,17 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | SaveLinks, Loaded loadedState ->
     let linksToSave = loadedState.Links |> List.map (fun item -> item.Link)
-    let save () = ApiClient.LinkApi.SaveLinks linksToSave
+    let save () =
+      ApiClient.LinkApi.SaveLinks model.UserId linksToSave
     let savingState = {loadedState with IsSaving = true; Saved = false; Error = None}
-    {model with State = Loaded savingState},
-    Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
+    {model with State = Loaded savingState}, Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
 
   | SaveLinksResult (Result.Ok ()), Loaded loadedState ->
     let newState = {loadedState with IsSaving = false; Saved = true}
     {model with State = Loaded newState}, Cmd.none
 
   | SaveLinksResult (Result.Error err), Loaded loadedState ->
-    let newState =
-      {loadedState with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}
+    let newState = {loadedState with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}
     {model with State = Loaded newState}, Cmd.none
 
   | DragStart clientId, Loaded loadedState ->

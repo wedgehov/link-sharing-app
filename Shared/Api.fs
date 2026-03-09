@@ -10,7 +10,11 @@ type AppError =
     | ValidationError of string
     | Unexpected of string
 
-type User = { Id: int; Email: string }
+type User = {
+    Id: int
+    Email: string
+    PublicId: string
+}
 
 type LoginRequest = { Email: string; Password: string }
 
@@ -24,13 +28,13 @@ type IAuthApi = {
 }
 
 type IProfileApi = {
-    GetProfile: unit -> Async<Result<UserProfile, AppError>>
-    SaveProfile: UserProfile -> Async<Result<unit, AppError>>
+    GetProfile: int -> Async<Result<UserProfile, AppError>>
+    SaveProfile: int -> UserProfile -> Async<Result<unit, AppError>>
 }
 
 type ILinkApi = {
-    GetLinks: unit -> Async<Result<Link list, AppError>>
-    SaveLinks: Link list -> Async<Result<unit, AppError>>
+    GetLinks: int -> Async<Result<Link list, AppError>>
+    SaveLinks: int -> Link list -> Async<Result<unit, AppError>>
 }
 
 type IPublicApi = { GetPreview: string -> Async<Result<UserProfile * Link list, AppError>> }

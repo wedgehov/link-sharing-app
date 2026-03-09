@@ -32,10 +32,8 @@ let getLinks (db: AppDbContext) (userId: int) =
     |> TaskResult.ofTask
 
 let saveLinks (db: AppDbContext) (userId: int) (linksDto: Link list) =
-    taskResult {
-        let! existingLinks =
-            db.Links.Where(fun (l: Entity.Link) -> l.UserId = userId).ToListAsync()
-            |> TaskResult.ofTask
+    task {
+        let! existingLinks = db.Links.Where(fun (l: Entity.Link) -> l.UserId = userId).ToListAsync()
 
         db.Links.RemoveRange(existingLinks) |> ignore
 
@@ -47,7 +45,8 @@ let saveLinks (db: AppDbContext) (userId: int) (linksDto: Link list) =
             newLink.UserId <- userId
             db.Links.Add(newLink) |> ignore
 
-        do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
+        let! _ = db.SaveChangesAsync()
+        ()
     }
 
 let getPreview (db: AppDbContext) (publicId: string) =
@@ -88,34 +87,39 @@ let private toSharedProfile (user: Entity.User) : UserProfile = {
     AvatarUrl = nonBlankOption user.AvatarUrl
 }
 
+let private getLinksByUserId (ctx: HttpContext) (userId: int) =
+    asyncResult {
+        let db = ctx.GetService<AppDbContext>()
+        let! links = getLinks db userId |> Async.AwaitTask
+        return links |> Seq.map toSharedLink |> List.ofSeq
+    }
+
+let private saveLinksByUserId (ctx: HttpContext) (userId: int) (links: Link list) =
+    asyncResult {
+        let db = ctx.GetService<AppDbContext>()
+        do! saveLinks db userId links |> Async.AwaitTask |> AsyncResult.ofAsync
+    }
+
+let private getPublicPreviewById (ctx: HttpContext) (publicId: string) =
+    asyncResult {
+        let db = ctx.GetService<AppDbContext>()
+        let! user, links = getPreview db publicId |> Async.AwaitTask
+        return (toSharedProfile user, links |> Seq.map toSharedLink |> List.ofSeq)
+    }
+
 let linksApiImplementation (ctx: HttpContext) : ILinkApi = {
     GetLinks =
-        fun () ->
-            Auth.requireUser ctx
-            <| fun userId ->
-                asyncResult {
-                    let db = ctx.GetService<AppDbContext>()
-                    let! links = getLinks db userId |> Async.AwaitTask
-                    return links |> Seq.map toSharedLink |> List.ofSeq
-                }
+        fun userId ->
+            Auth.requireAuthorization ctx userId
+            <| fun authorizedUserId -> getLinksByUserId ctx authorizedUserId
     SaveLinks =
-        fun links ->
-            Auth.requireUser ctx
-            <| fun userId ->
-                asyncResult {
-                    let db = ctx.GetService<AppDbContext>()
-                    do! saveLinks db userId links |> Async.AwaitTask
-                }
+        fun userId links ->
+            Auth.requireAuthorization ctx userId
+            <| fun authorizedUserId -> saveLinksByUserId ctx authorizedUserId links
 }
 
 let publicApiImplementation (ctx: HttpContext) : IPublicApi = {
-    GetPreview =
-        fun publicId ->
-            asyncResult {
-                let db = ctx.GetService<AppDbContext>()
-                let! user, links = getPreview db publicId |> Async.AwaitTask
-                return (toSharedProfile user, links |> Seq.map toSharedLink |> List.ofSeq)
-            }
+    GetPreview = fun publicId -> getPublicPreviewById ctx publicId
 }
 
 let linksApiHandler: HttpHandler =

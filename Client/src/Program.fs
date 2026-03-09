@@ -83,14 +83,15 @@ let urlUpdate (result: Page option) (model: Model) : Model * Cmd<Msg> =
       match actualPage with
       | LoginPage -> {model with Login = LoginPage.init ()}, Cmd.none
       | RegisterPage -> {model with Register = RegisterPage.init ()}, Cmd.none
-      | UserLinksPage _ ->
-        let (linksModel, linksCmd) = LinkEditorPage.init ()
+      | UserLinksPage userId ->
+        let (linksModel, linksCmd) = LinkEditorPage.init userId
         {model with Links = linksModel}, Cmd.map LinksMsg linksCmd
-      | UserProfilePage _ ->
-        let (profileModel, profileCmd) = ProfileEditorPage.init ()
+      | UserProfilePage userId ->
+        let (profileModel, profileCmd) = ProfileEditorPage.init userId
         {model with Profile = profileModel}, Cmd.map ProfileMsg profileCmd
-      | UserPreviewPage _ ->
-        let (previewModel, previewCmd) = PreviewPage.init ()
+      | UserPreviewPage userId ->
+        let previewPublicId = model.User |> Option.map (fun user -> user.PublicId)
+        let (previewModel, previewCmd) = PreviewPage.init userId previewPublicId
         {model with Preview = previewModel}, Cmd.map PreviewMsg previewCmd
       | PublicPreviewPage publicId ->
         let (publicModel, publicCmd) = PublicPreviewPage.init publicId
@@ -107,9 +108,9 @@ let init (result: Option<Page>) : Model * Cmd<Msg> =
     User = None
     Login = LoginPage.init ()
     Register = RegisterPage.init ()
-    Links = LinkEditorPage.init () |> fst
-    Profile = ProfileEditorPage.init () |> fst
-    Preview = PreviewPage.init () |> fst
+    Links = LinkEditorPage.init 0 |> fst
+    Profile = ProfileEditorPage.init 0 |> fst
+    Preview = PreviewPage.init 0 None |> fst
     PublicPreview =
       PublicPreviewPage.init "00000000-0000-0000-0000-000000000000"
       |> fst
@@ -203,8 +204,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
   let header =
     match model.Page, model.User with
     | UserLinksPage _, Some user
-    | UserProfilePage _, Some user
-    | UserPreviewPage _, Some user -> Some (Header.view user.Id)
+    | UserProfilePage _, Some user -> Some (Header.view user.Id)
     | _ -> None
 
   Html.div [

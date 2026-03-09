@@ -22,7 +22,7 @@ type State =
   | Loaded of ProfileForm
   | Error of string
 
-type Model = {State: State; PreviewLinks: Link list}
+type Model = {UserId: int; State: State; PreviewLinks: Link list}
 
 type Msg =
   | LoadProfile
@@ -61,8 +61,8 @@ let private toDto (f: ProfileForm) : UserProfile = {
       Some f.AvatarUrl
 }
 
-let init () : Model * Cmd<Msg> =
-  {State = Loading; PreviewLinks = []},
+let init (userId: int) : Model * Cmd<Msg> =
+  {UserId = userId; State = Loading; PreviewLinks = []},
   Cmd.batch [
     Cmd.ofMsg LoadProfile
     Cmd.ofMsg LoadLinks
@@ -71,7 +71,8 @@ let init () : Model * Cmd<Msg> =
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadProfile, _ ->
-    let load () = ApiClient.ProfileApi.GetProfile ()
+    let load () =
+      ApiClient.ProfileApi.GetProfile model.UserId
     {model with State = Loading}, Cmd.OfAsync.either load () ProfileLoaded (asUnexpected ProfileLoaded)
 
   | ProfileLoaded (Result.Ok profile), _ -> {model with State = Loaded (toForm profile)}, Cmd.none
@@ -79,7 +80,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | ProfileLoaded (Result.Error err), _ -> {model with State = Error (appErrorToMessage err)}, Cmd.none
 
   | LoadLinks, _ ->
-    let load () = ApiClient.LinkApi.GetLinks ()
+    let load () = ApiClient.LinkApi.GetLinks model.UserId
     model, Cmd.OfAsync.either load () LinksLoaded (asUnexpected LinksLoaded)
 
   | LinksLoaded (Result.Ok links), _ -> {model with PreviewLinks = links}, Cmd.none
@@ -93,7 +94,8 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | Save, Loaded form ->
     let dto = toDto form
-    let save () = ApiClient.ProfileApi.SaveProfile dto
+    let save () =
+      ApiClient.ProfileApi.SaveProfile model.UserId dto
     let saving = {form with IsSaving = true; Error = None; Saved = false}
     {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
 

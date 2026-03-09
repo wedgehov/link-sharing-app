@@ -13,23 +13,25 @@ let view (profile: UserProfile) (links: Link list) =
       full
 
   Html.div [
-    prop.className "max-w-md mx-auto p-6 flex flex-col gap-6"
+    prop.className
+      "w-full max-w-sm mx-auto bg-white rounded-[24px] shadow-[var(--shadow-lg)] px-6 py-10 md:px-12 md:py-12 flex flex-col items-center gap-8"
     prop.children [
       Html.div [
-        prop.className "flex items-center gap-4"
+        prop.className "flex flex-col items-center gap-6"
         prop.children [
           match profile.AvatarUrl with
           | Some url when not (System.String.IsNullOrWhiteSpace url) ->
             Html.img [
               prop.src url
               prop.alt "Avatar"
-              prop.className "w-16 h-16 rounded-full object-cover"
+              prop.className "w-24 h-24 rounded-full object-cover border-4 border-purple-600"
             ]
           | _ ->
             Html.div [
-              prop.className "w-16 h-16 rounded-full bg-gray-200"
+              prop.className "w-24 h-24 rounded-full bg-gray-200 border-4 border-purple-600"
             ]
           Html.div [
+            prop.className "text-center"
             prop.children [
               Html.h1 [
                 prop.className "text-preset-2"
@@ -47,7 +49,7 @@ let view (profile: UserProfile) (links: Link list) =
         ]
       ]
       Html.ul [
-        prop.className "flex flex-col gap-3"
+        prop.className "w-full flex flex-col gap-4"
         prop.children [
           for l in links do
             Html.li [

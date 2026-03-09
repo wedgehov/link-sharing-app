@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -29,5 +30,5 @@ public class User
 
     [Required]
     [Column("public_guid")]
-    public string PublicGuid { get; set; } = null!;
+    public string PublicGuid { get; set; } = Guid.NewGuid().ToString("D");
 }

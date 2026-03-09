@@ -30,11 +30,29 @@ let update msg model : Model * Cmd<Msg> =
   | LoadResult (Result.Error err) -> {model with State = Error (appErrorToMessage err)}, Cmd.none
 
 let view model _dispatch =
-  match model.State with
-  | Loading -> Html.p "Loading public preview..."
-  | Error e ->
-    Html.p [
-      prop.className "text-red-600"
-      prop.text e
+  let content =
+    match model.State with
+    | Loading ->
+      Html.p [
+        prop.className "text-preset-3-regular text-gray-600 text-center"
+        prop.text "Loading public preview..."
+      ]
+    | Error e ->
+      Html.p [
+        prop.className "text-red-600 text-center"
+        prop.text e
+      ]
+    | Loaded (profile, links) -> Ui.ProfileLinksView.view profile links
+
+  Html.div [
+    prop.className "min-h-screen bg-gray-100 relative"
+    prop.children [
+      Html.div [
+        prop.className "hidden md:block absolute inset-x-0 top-0 h-[357px] bg-purple-600 rounded-b-[32px]"
+      ]
+      Html.div [
+        prop.className "relative z-10 max-w-5xl mx-auto px-4 pt-12 pb-12 md:px-6 md:pt-16"
+        prop.children [content]
+      ]
     ]
-  | Loaded (profile, links) -> Ui.ProfileLinksView.view profile links
+  ]

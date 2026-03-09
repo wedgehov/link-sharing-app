@@ -43,7 +43,31 @@ let requireUser
         return! operation userId
     }
 
-let private toSharedUser (user: Entity.User) : User = { Id = user.Id; Email = user.Email }
+let requireAuthorization
+    (ctx: HttpContext)
+    (resourceOwnerId: int)
+    (operation: int -> Async<Result<'ok, AppError>>)
+    : Async<Result<'ok, AppError>> =
+    requireUser ctx
+    <| fun userId ->
+        asyncResult {
+            do!
+                userId = resourceOwnerId
+                |> Result.requireTrue Unauthorized
+                |> AsyncResult.ofResult
+
+            return! operation userId
+        }
+
+let private toSharedUser (user: Entity.User) : User = {
+    Id = user.Id
+    Email = user.Email
+    PublicId =
+        if String.IsNullOrWhiteSpace user.PublicGuid then
+            ""
+        else
+            user.PublicGuid
+}
 
 let private createPrincipal (email: string) (userId: int) =
     let claims = [ Claim(ClaimTypes.Name, email); Claim("UserId", userId.ToString()) ]
@@ -75,7 +99,6 @@ let private register (ctx: HttpContext) (db: Entity.AppDbContext) (req: Register
         let newUser = Entity.User()
         newUser.Email <- req.Email
         newUser.PasswordHash <- passwordHash
-        newUser.PublicGuid <- Guid.NewGuid().ToString("D")
         db.Users.Add(newUser) |> ignore
 
         do!
