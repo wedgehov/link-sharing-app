@@ -85,16 +85,18 @@ let private generateInitialSlug
         | _ -> sprintf "user-%d" userId
 
 let getProfile (db: AppDbContext) (userId: int) =
-    task {
-        let! profile = db.UserProfiles.FirstOrDefaultAsync(fun p -> p.UserId = userId)
-        return if isNull profile then None else Some profile
-    }
+    db.UserProfiles.FirstOrDefaultAsync(fun p -> p.UserId = userId)
+    |> TaskResult.ofTask
+    |> TaskResult.map Option.ofObj
 
 let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
-    task {
+    taskResult {
         let! profile =
             db.UserProfiles.FirstOrDefaultAsync(fun (p: Entity.UserProfile) -> p.UserId = userId)
-        match if isNull profile then None else Some profile with
+            |> TaskResult.ofTask
+            |> TaskResult.map Option.ofObj
+
+        match profile with
         | None ->
             let baseSlug =
                 if String.IsNullOrWhiteSpace profileDto.ProfileSlug then
@@ -105,7 +107,7 @@ let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
                         userId
                 else
                     slugify profileDto.ProfileSlug
-            let! uniqueSlug = ensureUniqueSlug db baseSlug
+            let! uniqueSlug = ensureUniqueSlug db baseSlug |> TaskResult.ofTask
             let newProfile = Entity.UserProfile()
             newProfile.FirstName <- profileDto.FirstName
             newProfile.LastName <- profileDto.LastName
@@ -137,15 +139,14 @@ let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
                             userId
                     else
                         slugify profileDto.ProfileSlug
-                let! uniqueSlug = ensureUniqueSlug db baseSlug
+                let! uniqueSlug = ensureUniqueSlug db baseSlug |> TaskResult.ofTask
                 p.ProfileSlug <- uniqueSlug
             p.AvatarUrl <-
                 (match profileDto.AvatarUrl with
                  | Some v -> v
                  | None -> null)
 
-        let! _ = db.SaveChangesAsync()
-        return ()
+        do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
     }
 
 let private toSharedProfile (p: Entity.UserProfile) : UserProfile = {
@@ -179,7 +180,7 @@ let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
             <| fun userId ->
                 asyncResult {
                     let db = ctx.GetService<AppDbContext>()
-                    let! profile = getProfile db userId |> Async.AwaitTask |> AsyncResult.ofAsync
+                    let! profile = getProfile db userId |> Async.AwaitTask
                     return profile |> Option.map toSharedProfile |> Option.defaultValue emptyProfile
                 }
     SaveProfile =
@@ -188,11 +189,7 @@ let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
             <| fun userId ->
                 asyncResult {
                     let db = ctx.GetService<AppDbContext>()
-                    do!
-                        saveProfile db userId profileDto
-                        |> Async.AwaitTask
-                        |> AsyncResult.ofAsync
-                        |> AsyncResult.ignore
+                    do! saveProfile db userId profileDto |> Async.AwaitTask
                 }
 }
 

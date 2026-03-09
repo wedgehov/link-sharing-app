@@ -7,7 +7,6 @@ open Elmish.UrlParser
 open Feliz
 open Shared.SharedModels
 open Shared.Api
-open Fable.Core.JsInterop
 open Routing // Import the new module
 
 // Main model - The Page DU is now removed from here.
@@ -31,16 +30,6 @@ type Msg =
   | LoggedIn of User
   | LoggedOut
   | RequestLogout
-
-// Read environment variable to determine initial auth state for development
-let private isStartAuthenticated () =
-  // Access Vite's import.meta.env from Fable
-  let env: obj = Fable.Core.JsInterop.emitJsExpr () "import.meta.env"
-  let v: obj = env?VITE_START_AUTHENTICATED
-  if isNull v || Fable.Core.JsInterop.emitJsExpr<bool> v "($0 === undefined)" then
-    false
-  else
-    unbox<string> v = "true"
 
 // URL parsing and routing - The old urlParser is removed from here.
 
@@ -103,15 +92,9 @@ let init (result: Option<Page>) : Model * Cmd<Msg> =
   let (linksModel, linksCmd) = LinkEditorPage.init ()
   let (profileModel, profileCmd) = ProfileEditorPage.init ()
 
-  let initialUser =
-    if isStartAuthenticated () then
-      Some ({Id = 1; Email = "dev@example.com"}: User)
-    else
-      None
-
   let model = {
     Page = page
-    User = initialUser // Conditionally set user based on env var
+    User = None
     Login = LoginPage.init ()
     Register = RegisterPage.init ()
     Links = linksModel
@@ -177,9 +160,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | RequestLogout ->
     model,
-    Auth.logout (function
+    Auth.logout (
+      function
       | Ok () -> LoggedOut
-      | Error _ -> LoggedOut)
+      | Error _ -> LoggedOut
+    )
 
 // View
 let view (model: Model) (dispatch: Msg -> unit) =
