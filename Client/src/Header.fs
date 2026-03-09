@@ -2,11 +2,15 @@ module Header
 
 open Feliz
 open Browser.Dom
-open Routing // Import the new module
+open Routing
 
 let private formatPath = List.toArray >> String.concat "/" >> (fun s -> "#/" + s)
 
-let view (profileSlug: string option) =
+let view (userId: int) =
+  let linksPath = UserLinksPage userId |> pageToPath |> formatPath
+  let profilePath = UserProfilePage userId |> pageToPath |> formatPath
+  let previewPath = UserPreviewPage userId |> pageToPath |> formatPath
+
   // Left group: brand (icon + text)
   let leftGroup =
     let brand =
@@ -30,13 +34,12 @@ let view (profileSlug: string option) =
 
   // Middle group: compact paired tabs (Links | Profile Details)
   let centerGroup =
-    // Determine active tab from current hash
     let currentHash = window.location.hash
     let isLinksActive =
-      currentHash = (LinksPage |> pageToPath |> formatPath)
+      currentHash = linksPath
       || currentHash = "#/"
       || currentHash = ""
-    let isProfileActive = currentHash = (ProfilePage |> pageToPath |> formatPath)
+    let isProfileActive = currentHash = profilePath
 
     let stateClasses isActive =
       if isActive then
@@ -52,7 +55,7 @@ let view (profileSlug: string option) =
             "px-4 py-2 text-preset-3-semibold inline-flex items-center gap-2 rounded-[var(--radius-md)] "
             + stateClasses isLinksActive
           )
-          prop.href (LinksPage |> pageToPath |> formatPath)
+          prop.href linksPath
           prop.children [
             Ui.Icon.view Ui.Icon.Name.LinksHeader "Links" (Some "w-4 h-4")
             Html.span [prop.text "Links"]
@@ -63,7 +66,7 @@ let view (profileSlug: string option) =
             "px-4 py-2 text-preset-3-semibold inline-flex items-center gap-2 rounded-[var(--radius-md)] "
             + stateClasses isProfileActive
           )
-          prop.href (ProfilePage |> pageToPath |> formatPath)
+          prop.href profilePath
           prop.children [
             Ui.Icon.view Ui.Icon.Name.ProfileHeader "Profile Details" (Some "w-4 h-4")
             Html.span [prop.text "Profile Details"]
@@ -73,17 +76,13 @@ let view (profileSlug: string option) =
     ]
 
   // Right group: Preview tab
-  let previewHref =
-    match profileSlug with
-    | Some s when not (System.String.IsNullOrWhiteSpace s) -> PreviewPage s |> pageToPath |> formatPath
-    | _ -> PreviewPage "john-appleseed" |> pageToPath |> formatPath
   let rightGroup =
     Ui.Button.view {|
       variant = Ui.Button.Variant.Secondary
       size = Ui.Button.Size.Md
       active = false
       disabled = false
-      onClick = (fun () -> window.location.hash <- previewHref)
+      onClick = (fun () -> window.location.hash <- previewPath)
       text = "Preview"
     |}
 

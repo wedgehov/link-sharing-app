@@ -1,4 +1,4 @@
-﻿module Shared.SharedModels
+module Shared.SharedModels
 
 type Platform =
     | GitHub
@@ -28,6 +28,5 @@ type UserProfile = {
     FirstName: string
     LastName: string
     DisplayEmail: string option
-    ProfileSlug: string
     AvatarUrl: string option
 }

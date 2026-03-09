@@ -2,17 +2,20 @@
 using Entity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Backend.Migrations
+namespace Entity.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260309165956_CollapseUserProfileIntoUserAndGuidPublicId")]
+    partial class CollapseUserProfileIntoUserAndGuidPublicId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -67,6 +70,10 @@ namespace Backend.Migrations
                         .HasColumnType("text")
                         .HasColumnName("avatar_url");
 
+                    b.Property<string>("DisplayEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("display_email");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text")
@@ -85,14 +92,13 @@ namespace Backend.Migrations
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
-                    b.Property<string>("PublicGuid")
-                        .IsRequired()
+                    b.Property<string>("PublicId")
                         .HasColumnType("text")
-                        .HasColumnName("public_guid");
+                        .HasColumnName("public_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PublicGuid")
+                    b.HasIndex("PublicId")
                         .IsUnique();
 
                     b.ToTable("users");

@@ -18,11 +18,13 @@
     <Compile Include="Ui/Tabs.fs" />
     <Compile Include="Ui/PlatformLink.fs" />
     <Compile Include="Ui/PhoneMockup.fs" />
+    <Compile Include="Ui/ProfileLinksView.fs" />
     <Compile Include="LoginPage.fs" />
     <Compile Include="RegisterPage.fs" />
     <Compile Include="LinkEditorPage.fs" />
     <Compile Include="ProfileEditorPage.fs" />
     <Compile Include="PreviewPage.fs" />
+    <Compile Include="PublicPreviewPage.fs" />
     <Compile Include="Header.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

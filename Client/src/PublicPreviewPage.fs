@@ -1,4 +1,4 @@
-module PreviewPage
+module PublicPreviewPage
 
 open Feliz
 open Elmish
@@ -11,35 +11,27 @@ type State =
   | Loaded of UserProfile * Link list
   | Error of string
 
-type Model = {State: State}
+type Model = {PublicId: string; State: State}
 
 type Msg =
   | Load
   | LoadResult of Result<UserProfile * Link list, AppError>
 
-let init () : Model * Cmd<Msg> = {State = Loading}, Cmd.ofMsg Load
+let init (publicId: string) : Model * Cmd<Msg> =
+  {PublicId = publicId; State = Loading}, Cmd.ofMsg Load
 
 let update msg model : Model * Cmd<Msg> =
   match msg with
   | Load ->
     let load () =
-      async {
-        let! profileResult = ApiClient.ProfileApi.GetProfile ()
-        match profileResult with
-        | Result.Error err -> return Result.Error err
-        | Result.Ok profile ->
-          let! linksResult = ApiClient.LinkApi.GetLinks ()
-          match linksResult with
-          | Result.Error err -> return Result.Error err
-          | Result.Ok links -> return Result.Ok (profile, links)
-      }
+      ApiClient.PublicApi.GetPreview model.PublicId
     {model with State = Loading}, Cmd.OfAsync.either load () LoadResult (asUnexpected LoadResult)
   | LoadResult (Result.Ok (profile, links)) -> {model with State = Loaded (profile, links)}, Cmd.none
   | LoadResult (Result.Error err) -> {model with State = Error (appErrorToMessage err)}, Cmd.none
 
 let view model _dispatch =
   match model.State with
-  | Loading -> Html.p "Loading preview..."
+  | Loading -> Html.p "Loading public preview..."
   | Error e ->
     Html.p [
       prop.className "text-red-600"

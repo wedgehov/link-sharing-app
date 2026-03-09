@@ -27,16 +27,17 @@ public class Link
     [Column("id")]
     public int Id { get; set; }
 
+    [Required]
     [Column("platform")]
     public Platform Platform { get; set; }
 
     [Required]
     [Column("url")]
-    public string Url { get; set; } = string.Empty;
+    public string Url { get; set; } = null!;
 
     [Column("sort_order")]
     public int SortOrder { get; set; }
 
-    [Column("user_profile_id")]
-    public int UserProfileId { get; set; }
+    [Column("user_id")]
+    public int UserId { get; set; }
 }

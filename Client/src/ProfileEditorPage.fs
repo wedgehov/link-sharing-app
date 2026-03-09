@@ -11,7 +11,6 @@ type ProfileForm = {
   FirstName: string
   LastName: string
   DisplayEmail: string
-  ProfileSlug: string
   AvatarUrl: string
   IsSaving: bool
   Error: string option
@@ -33,7 +32,6 @@ type Msg =
   | SetFirstName of string
   | SetLastName of string
   | SetDisplayEmail of string
-  | SetProfileSlug of string
   | SetAvatarUrl of string
   | Save
   | SaveResult of Result<unit, AppError>
@@ -42,7 +40,6 @@ let private toForm (p: UserProfile) : ProfileForm = {
   FirstName = p.FirstName
   LastName = p.LastName
   DisplayEmail = defaultArg p.DisplayEmail ""
-  ProfileSlug = p.ProfileSlug
   AvatarUrl = defaultArg p.AvatarUrl ""
   IsSaving = false
   Error = None
@@ -57,7 +54,6 @@ let private toDto (f: ProfileForm) : UserProfile = {
       None
     else
       Some f.DisplayEmail
-  ProfileSlug = f.ProfileSlug
   AvatarUrl =
     if String.IsNullOrWhiteSpace f.AvatarUrl then
       None
@@ -76,13 +72,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadProfile, _ ->
     let load () = ApiClient.ProfileApi.GetProfile ()
-    {model with State = Loading},
-    Cmd.OfAsync.either load () ProfileLoaded (asUnexpected ProfileLoaded)
+    {model with State = Loading}, Cmd.OfAsync.either load () ProfileLoaded (asUnexpected ProfileLoaded)
 
   | ProfileLoaded (Result.Ok profile), _ -> {model with State = Loaded (toForm profile)}, Cmd.none
 
-  | ProfileLoaded (Result.Error err), _ ->
-    {model with State = Error (appErrorToMessage err)}, Cmd.none
+  | ProfileLoaded (Result.Error err), _ -> {model with State = Error (appErrorToMessage err)}, Cmd.none
 
   | LoadLinks, _ ->
     let load () = ApiClient.LinkApi.GetLinks ()
@@ -95,23 +89,19 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | SetFirstName v, Loaded form -> {model with State = Loaded {form with FirstName = v; Saved = false}}, Cmd.none
   | SetLastName v, Loaded form -> {model with State = Loaded {form with LastName = v; Saved = false}}, Cmd.none
   | SetDisplayEmail v, Loaded form -> {model with State = Loaded {form with DisplayEmail = v; Saved = false}}, Cmd.none
-  | SetProfileSlug v, Loaded form -> {model with State = Loaded {form with ProfileSlug = v; Saved = false}}, Cmd.none
   | SetAvatarUrl v, Loaded form -> {model with State = Loaded {form with AvatarUrl = v; Saved = false}}, Cmd.none
 
   | Save, Loaded form ->
     let dto = toDto form
     let save () = ApiClient.ProfileApi.SaveProfile dto
     let saving = {form with IsSaving = true; Error = None; Saved = false}
-    {model with State = Loaded saving},
-    Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
+    {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
 
   | SaveResult (Result.Ok ()), Loaded form ->
     {model with State = Loaded {form with IsSaving = false; Saved = true}}, Cmd.none
 
   | SaveResult (Result.Error err), Loaded form ->
-    {model with
-        State =
-          Loaded {form with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}},
+    {model with State = Loaded {form with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}},
     Cmd.none
 
   | _, _ -> model, Cmd.none

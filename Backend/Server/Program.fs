@@ -60,6 +60,7 @@ let seedDevelopmentData (db: Entity.AppDbContext) =
             let devUser = User()
             devUser.Email <- email
             devUser.PasswordHash <- passwordHash
+            devUser.PublicGuid <- Guid.NewGuid().ToString("D")
             db.Users.Add(devUser) |> ignore
             let! _ = db.SaveChangesAsync()
             ()

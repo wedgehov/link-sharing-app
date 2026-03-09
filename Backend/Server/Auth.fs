@@ -75,6 +75,7 @@ let private register (ctx: HttpContext) (db: Entity.AppDbContext) (req: Register
         let newUser = Entity.User()
         newUser.Email <- req.Email
         newUser.PasswordHash <- passwordHash
+        newUser.PublicGuid <- Guid.NewGuid().ToString("D")
         db.Users.Add(newUser) |> ignore
 
         do!

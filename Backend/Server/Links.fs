@@ -1,5 +1,6 @@
 module Links
 
+open System
 open FsToolkit.ErrorHandling
 open System.Linq
 open Entity
@@ -10,52 +11,30 @@ open Shared.SharedModels
 open Shared.Api
 open Mapping
 
-let getLinks (db: AppDbContext) (userId: int) =
-    taskResult {
-        let! profile =
-            db.UserProfiles.FirstOrDefaultAsync(fun p -> p.UserId = userId)
-            |> TaskResult.ofTask
-            |> TaskResult.map Option.ofObj
+let private normalizePublicId (value: string) =
+    match Guid.TryParse value with
+    | true, guid -> Some(guid.ToString("D"))
+    | _ -> None
 
-        match profile with
-        | None -> return System.Collections.Generic.List<Entity.Link>()
-        | Some profile ->
-            return!
-                db.Links
-                    .AsQueryable()
-                    .Where(fun (l: Entity.Link) -> l.UserProfileId = profile.Id)
-                    .OrderBy(fun (l: Entity.Link) -> l.SortOrder)
-                    .ToListAsync()
-                |> TaskResult.ofTask
-    }
+let private textOrEmpty (value: string | null) = value |> Option.ofObj |> Option.defaultValue ""
+
+let private nonBlankOption (value: string | null) =
+    value
+    |> Option.ofObj
+    |> Option.filter (fun v -> not (String.IsNullOrWhiteSpace v))
+
+let getLinks (db: AppDbContext) (userId: int) =
+    db.Links
+        .AsQueryable()
+        .Where(fun (l: Entity.Link) -> l.UserId = userId)
+        .OrderBy(fun (l: Entity.Link) -> l.SortOrder)
+        .ToListAsync()
+    |> TaskResult.ofTask
 
 let saveLinks (db: AppDbContext) (userId: int) (linksDto: Link list) =
     taskResult {
-        let! userProfile =
-            db.UserProfiles.FirstOrDefaultAsync(fun (p: Entity.UserProfile) -> p.UserId = userId)
-            |> TaskResult.ofTask
-            |> TaskResult.map Option.ofObj
-
-        // If profile doesn't exist yet, create a minimal one so links can be saved.
-        let! userProfile =
-            match userProfile with
-            | None ->
-                taskResult {
-                    let p = Entity.UserProfile()
-                    p.UserId <- userId
-                    p.FirstName <- ""
-                    p.LastName <- ""
-                    p.DisplayEmail <- null
-                    p.AvatarUrl <- null
-                    p.ProfileSlug <- sprintf "user-%d" userId
-                    db.UserProfiles.Add(p) |> ignore
-                    do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
-                    return p
-                }
-            | Some profile -> TaskResult.ofResult (Ok profile)
-
         let! existingLinks =
-            db.Links.Where(fun (l: Entity.Link) -> l.UserProfileId = userProfile.Id).ToListAsync()
+            db.Links.Where(fun (l: Entity.Link) -> l.UserId = userId).ToListAsync()
             |> TaskResult.ofTask
 
         db.Links.RemoveRange(existingLinks) |> ignore
@@ -65,58 +44,48 @@ let saveLinks (db: AppDbContext) (userId: int) (linksDto: Link list) =
             newLink.Url <- linkDto.Url
             newLink.Platform <- toEntityPlatform linkDto.Platform
             newLink.SortOrder <- linkDto.SortOrder
-            newLink.UserProfileId <- userProfile.Id
+            newLink.UserId <- userId
             db.Links.Add(newLink) |> ignore
 
         do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
     }
 
-let getPreview (db: AppDbContext) (slug: string) =
+let getPreview (db: AppDbContext) (publicId: string) =
     taskResult {
-        let! profile =
-            db.UserProfiles.FirstOrDefaultAsync(fun p -> p.ProfileSlug = slug)
+        let! normalizedPublicId =
+            publicId
+            |> normalizePublicId
+            |> Result.requireSome NotFound
+            |> TaskResult.ofResult
+
+        let! user =
+            db.Users.AsNoTracking().FirstOrDefaultAsync(fun u -> u.PublicGuid = normalizedPublicId)
             |> TaskResult.ofTask
             |> TaskResult.map Option.ofObj
             |> TaskResult.bind (Result.requireSome NotFound >> TaskResult.ofResult)
 
         let! links =
             db.Links
-                .Where(fun (l: Entity.Link) -> l.UserProfileId = profile.Id)
+                .Where(fun (l: Entity.Link) -> l.UserId = user.Id)
                 .OrderBy(fun (l: Entity.Link) -> l.SortOrder)
                 .ToListAsync()
             |> TaskResult.ofTask
 
-        return profile, links
+        return user, links
     }
 
 let private toSharedLink (link: Entity.Link) : Link = {
     Id = Some link.Id
     Platform = toSharedPlatform link.Platform
-    Url = link.Url
+    Url = textOrEmpty link.Url
     SortOrder = link.SortOrder
 }
 
-let private toSharedProfile (profile: Entity.UserProfile) : UserProfile = {
-    FirstName = if isNull profile.FirstName then "" else profile.FirstName
-    LastName = if isNull profile.LastName then "" else profile.LastName
-    DisplayEmail =
-        if
-            isNull profile.DisplayEmail
-            || System.String.IsNullOrWhiteSpace profile.DisplayEmail
-        then
-            None
-        else
-            Some profile.DisplayEmail
-    ProfileSlug =
-        if isNull profile.ProfileSlug then
-            ""
-        else
-            profile.ProfileSlug
-    AvatarUrl =
-        if isNull profile.AvatarUrl || System.String.IsNullOrWhiteSpace profile.AvatarUrl then
-            None
-        else
-            Some profile.AvatarUrl
+let private toSharedProfile (user: Entity.User) : UserProfile = {
+    FirstName = textOrEmpty user.FirstName
+    LastName = textOrEmpty user.LastName
+    DisplayEmail = Some user.Email
+    AvatarUrl = nonBlankOption user.AvatarUrl
 }
 
 let linksApiImplementation (ctx: HttpContext) : ILinkApi = {
@@ -141,11 +110,11 @@ let linksApiImplementation (ctx: HttpContext) : ILinkApi = {
 
 let publicApiImplementation (ctx: HttpContext) : IPublicApi = {
     GetPreview =
-        fun slug ->
+        fun publicId ->
             asyncResult {
                 let db = ctx.GetService<AppDbContext>()
-                let! profile, links = getPreview db slug |> Async.AwaitTask
-                return (toSharedProfile profile, links |> Seq.map toSharedLink |> List.ofSeq)
+                let! user, links = getPreview db publicId |> Async.AwaitTask
+                return (toSharedProfile user, links |> Seq.map toSharedLink |> List.ofSeq)
             }
 }
 
