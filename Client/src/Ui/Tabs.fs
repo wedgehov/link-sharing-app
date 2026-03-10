@@ -1,6 +1,7 @@
 module Ui.Tabs
 
 open Feliz
+open Routing
 
 [<RequireQualifiedAccess>]
 type TabId =
@@ -22,7 +23,12 @@ type Layout =
   | Compact
   | FullWidthSpaceBetween
 
-type Props = {Active: TabId; OnSelect: TabId -> unit; Layout: Layout}
+type Props = {
+  UserId: int
+  Active: TabId
+  OnSelect: TabId -> unit
+  Layout: Layout
+}
 
 let private tabClasses (isActive: bool) =
   if isActive then
@@ -36,8 +42,8 @@ let view (p: Props) =
     Html.a [
       prop.href (
         match id with
-        | TabId.Links -> "#/links"
-        | TabId.Profile -> "#/profile"
+        | TabId.Links -> href (UserLinksPage p.UserId)
+        | TabId.Profile -> href (UserProfilePage p.UserId)
       )
       prop.onClick (fun _ -> p.OnSelect id)
       prop.className (

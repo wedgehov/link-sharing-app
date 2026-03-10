@@ -2,21 +2,11 @@ module Ui.ImageUpload
 
 open System
 open Feliz
-open Browser
 open Browser.Types
 
-type Props = {ImageUrl: string option; OnSelected: string -> unit}
+type Props = {ImageUrl: string option; OnSelected: File -> unit}
 
-let private readFileAsDataUrl (file: File) (onLoaded: string -> unit) =
-  let reader = Dom.FileReader.Create ()
-  reader.onload <-
-    (fun _ ->
-      let dataUrl: string = unbox reader.result
-      onLoaded dataUrl
-    )
-  reader.readAsDataURL (file)
-
-let private fileInput (onSelected: string -> unit) (inputId: string) =
+let private fileInput (onSelected: File -> unit) (inputId: string) =
   Html.input [
     prop.id inputId
     prop.type' "file"
@@ -27,7 +17,7 @@ let private fileInput (onSelected: string -> unit) (inputId: string) =
       if not (isNull target.files) && target.files.length > 0 then
         let file = target.files.item 0
         if not (isNull file) then
-          readFileAsDataUrl file onSelected
+          onSelected file
     )
   ]
 

@@ -3,6 +3,7 @@ module RegisterPage
 open Elmish
 open Feliz
 open Shared.Api
+open Routing
 open Ui
 
 // Model
@@ -46,8 +47,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     // This message should be bubbled up to the main update function
     // to navigate to the todos page and store the user.
     {model with IsLoading = false}, Cmd.none
-  | RegisterResult (Error err) ->
-    {model with IsLoading = false; Error = Some (Auth.appErrorToMessage err)}, Cmd.none
+  | RegisterResult (Error err) -> {model with IsLoading = false; Error = Some (Auth.appErrorToMessage err)}, Cmd.none
 
 // View
 let view (model: Model) (dispatch: Msg -> unit) =
@@ -137,7 +137,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                     prop.children [
                       Html.a [
                         prop.className "text-blue-500 hover:text-blue-600 text-sm"
-                        prop.href "#/login"
+                        prop.href (href LoginPage)
                         prop.text "Already have an account? Login"
                       ]
                     ]

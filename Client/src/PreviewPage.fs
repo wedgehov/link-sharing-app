@@ -1,7 +1,6 @@
 module PreviewPage
 
 open System
-open Browser.Dom
 open Fable.Core
 open Feliz
 open Elmish
@@ -9,6 +8,7 @@ open FsToolkit.ErrorHandling
 open Shared.SharedModels
 open Shared.Api
 open ClientShared
+open Routing
 
 type State =
   | Loading
@@ -71,12 +71,11 @@ let update msg model : Model * Cmd<Msg> =
   | ShareLinkCopyFailed -> {model with ShareState = CopyFailed}, clearShareStateCmd
   | ClearShareState -> {model with ShareState = Idle}, Cmd.none
 
-let view model dispatch =
-  let backToEditorPath = "#/user/" + string model.UserId + "/links"
+let view model dispatch onBackToEditor =
   let shareUrl =
     model.PublicId
     |> Option.filter (String.IsNullOrWhiteSpace >> not)
-    |> Option.map (fun id -> window.location.origin + "/#/" + id)
+    |> Option.map (fun id -> absoluteUrl (PublicPreviewPage id))
 
   let content =
     match model.State with
@@ -113,7 +112,7 @@ let view model dispatch =
                     size = Ui.Button.Size.Md
                     active = false
                     disabled = false
-                    onClick = (fun () -> window.location.hash <- backToEditorPath)
+                    onClick = onBackToEditor
                     text = "Back to Editor"
                   |}
                   Ui.Button.view {|

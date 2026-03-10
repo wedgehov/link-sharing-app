@@ -1,6 +1,8 @@
 module ProfileEditorPage
 
 open System
+open Browser.Types
+open Fable.Core
 open Feliz
 open Elmish
 open Shared.SharedModels
@@ -29,12 +31,17 @@ type Msg =
   | ProfileLoaded of Result<UserProfile, AppError>
   | LoadLinks
   | LinksLoaded of Result<Link list, AppError>
+  | SelectAvatarFile of File
+  | AvatarFileLoaded of string
+  | AvatarFileLoadFailed
   | SetFirstName of string
   | SetLastName of string
   | SetDisplayEmail of string
-  | SetAvatarUrl of string
   | Save
   | SaveResult of Result<unit, AppError>
+
+[<Emit("new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error || new Error('Could not read file')); reader.readAsDataURL($0); })")>]
+let private readFileAsDataUrl (_file: File) : JS.Promise<string> = jsNative
 
 let private toForm (p: UserProfile) : ProfileForm = {
   FirstName = p.FirstName
@@ -87,10 +94,24 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | LinksLoaded (Result.Error _err), _ -> model, Cmd.none
 
+  | SelectAvatarFile file, Loaded form ->
+    let loadingForm = {form with Error = None; Saved = false}
+    {model with State = Loaded loadingForm},
+    Cmd.OfPromise.either readFileAsDataUrl file AvatarFileLoaded (fun _ -> AvatarFileLoadFailed)
+
+  | AvatarFileLoaded avatarDataUrl, Loaded form ->
+    {model with State = Loaded {form with AvatarUrl = avatarDataUrl; Saved = false}}, Cmd.none
+
+  | AvatarFileLoadFailed, Loaded form ->
+    {
+      model with
+          State = Loaded {form with Error = Some "Could not read image file. Please try another image."; Saved = false}
+    },
+    Cmd.none
+
   | SetFirstName v, Loaded form -> {model with State = Loaded {form with FirstName = v; Saved = false}}, Cmd.none
   | SetLastName v, Loaded form -> {model with State = Loaded {form with LastName = v; Saved = false}}, Cmd.none
   | SetDisplayEmail v, Loaded form -> {model with State = Loaded {form with DisplayEmail = v; Saved = false}}, Cmd.none
-  | SetAvatarUrl v, Loaded form -> {model with State = Loaded {form with AvatarUrl = v; Saved = false}}, Cmd.none
 
   | Save, Loaded form ->
     let dto = toDto form
@@ -169,7 +190,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                           None
                         else
                           Some form.AvatarUrl
-                      OnSelected = (SetAvatarUrl >> dispatch)
+                      OnSelected = (SelectAvatarFile >> dispatch)
                     }
                   ]
                 ]

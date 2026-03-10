@@ -25,6 +25,7 @@
     <Compile Include="ProfileEditorPage.fs" />
     <Compile Include="PreviewPage.fs" />
     <Compile Include="PublicPreviewPage.fs" />
+    <Compile Include="NotFoundPage.fs" />
     <Compile Include="Header.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -35,7 +36,6 @@
     <PackageReference Include="Fable.Elmish" Version="5.0.2" />
     <PackageReference Include="Fable.Elmish.Browser" Version="4.1.0" />
     <PackageReference Include="Fable.Elmish.React" Version="5.0.0" />
-    <PackageReference Include="Fable.Elmish.UrlParser" Version="1.0.2" />
     <PackageReference Include="Fable.Remoting.Client" Version="7.35.0" />
     <PackageReference Include="Fable.React" Version="9.4.0" />
     <PackageReference Include="Feliz" Version="2.9.0" />

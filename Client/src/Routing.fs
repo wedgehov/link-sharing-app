@@ -1,6 +1,9 @@
 module Routing
 
 open System
+open Browser.Dom
+open Elmish
+open Feliz.Router
 
 type Page =
   | LoginPage
@@ -9,16 +12,7 @@ type Page =
   | UserProfilePage of userId: int
   | UserPreviewPage of userId: int
   | PublicPreviewPage of publicId: string
-
-let private tryParseInt (value: string) =
-  match Int32.TryParse value with
-  | true, parsed -> Some parsed
-  | _ -> None
-
-let private isGuid (value: string) =
-  match Guid.TryParse value with
-  | true, _ -> true
-  | _ -> false
+  | NotFoundPage
 
 let pageToPath (page: Page) : string list =
   match page with
@@ -28,24 +22,30 @@ let pageToPath (page: Page) : string list =
   | UserProfilePage userId -> ["user"; string userId; "profile"]
   | UserPreviewPage userId -> ["user"; string userId; "preview"]
   | PublicPreviewPage publicId -> [publicId]
+  | NotFoundPage -> ["404"]
 
-let pathParser (path: string list) : Page =
+let tryParsePath (path: string list) : Page =
   match path with
   | []
   | [""] -> LoginPage
   | ["login"] -> LoginPage
   | ["register"] -> RegisterPage
-  | ["user"; userId; "links"] ->
-    match tryParseInt userId with
-    | Some id -> UserLinksPage id
-    | None -> LoginPage
-  | ["user"; userId; "profile"] ->
-    match tryParseInt userId with
-    | Some id -> UserProfilePage id
-    | None -> LoginPage
-  | ["user"; userId; "preview"] ->
-    match tryParseInt userId with
-    | Some id -> UserPreviewPage id
-    | None -> LoginPage
-  | [single] when isGuid single -> PublicPreviewPage single
-  | _ -> LoginPage
+  | ["404"] -> NotFoundPage
+  | ["user"; Route.Int userId; "links"] -> UserLinksPage userId
+  | ["user"; Route.Int userId; "profile"] -> UserProfilePage userId
+  | ["user"; Route.Int userId; "preview"] -> UserPreviewPage userId
+  | [publicId] ->
+    match Guid.TryParse publicId with
+    | true, _ -> PublicPreviewPage publicId
+    | _ -> NotFoundPage
+  | _ -> NotFoundPage
+
+let tryParseCurrentUrl () = Router.currentUrl () |> tryParsePath
+
+let href (page: Page) : string = page |> pageToPath |> Router.format
+
+let absoluteUrl (page: Page) : string =
+  window.location.origin + "/" + href page
+
+let navigateCmd (page: Page) : Cmd<'msg> =
+  page |> pageToPath |> List.toArray |> Cmd.navigate

@@ -1,15 +1,15 @@
 module Header
 
 open Feliz
-open Browser.Dom
+open Feliz.Router
 open Routing
 
-let private formatPath = List.toArray >> String.concat "/" >> (fun s -> "#/" + s)
-
-let view (userId: int) =
-  let linksPath = UserLinksPage userId |> pageToPath |> formatPath
-  let profilePath = UserProfilePage userId |> pageToPath |> formatPath
-  let previewPath = UserPreviewPage userId |> pageToPath |> formatPath
+let view (userId: int) (onNavigate: Page -> unit) =
+  let linksPage = UserLinksPage userId
+  let profilePage = UserProfilePage userId
+  let previewPage = UserPreviewPage userId
+  let linksPath = href linksPage
+  let profilePath = href profilePage
 
   // Left group: brand (icon + text)
   let leftGroup =
@@ -34,12 +34,15 @@ let view (userId: int) =
 
   // Middle group: compact paired tabs (Links | Profile Details)
   let centerGroup =
-    let currentHash = window.location.hash
+    let currentPage = Router.currentUrl () |> tryParsePath
     let isLinksActive =
-      currentHash = linksPath
-      || currentHash = "#/"
-      || currentHash = ""
-    let isProfileActive = currentHash = profilePath
+      match currentPage with
+      | UserLinksPage _ -> true
+      | _ -> false
+    let isProfileActive =
+      match currentPage with
+      | UserProfilePage _ -> true
+      | _ -> false
 
     let stateClasses isActive =
       if isActive then
@@ -82,7 +85,7 @@ let view (userId: int) =
       size = Ui.Button.Size.Md
       active = false
       disabled = false
-      onClick = (fun () -> window.location.hash <- previewPath)
+      onClick = (fun () -> onNavigate previewPage)
       text = "Preview"
     |}
 
