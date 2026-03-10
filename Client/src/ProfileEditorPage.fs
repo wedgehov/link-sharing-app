@@ -17,9 +17,17 @@ type ProfileForm = {
   DisplayEmail: string
   DisplayEmailError: string option
   AvatarUrl: string
+  LastSavedSnapshot: ProfileSnapshot
   IsSaving: bool
   Error: string option
   Saved: bool
+}
+
+and ProfileSnapshot = {
+  FirstName: string
+  LastName: string
+  DisplayEmail: string
+  AvatarUrl: string
 }
 
 type State =
@@ -47,18 +55,43 @@ type Msg =
 [<Emit("new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error || new Error('Could not read file')); reader.readAsDataURL($0); })")>]
 let private readFileAsDataUrl (_file: File) : JS.Promise<string> = jsNative
 
-let private toForm (p: UserProfile) : ProfileForm = {
-  FirstName = p.FirstName
-  FirstNameError = None
-  LastName = p.LastName
-  LastNameError = None
-  DisplayEmail = defaultArg p.DisplayEmail ""
-  DisplayEmailError = None
-  AvatarUrl = defaultArg p.AvatarUrl ""
-  IsSaving = false
-  Error = None
-  Saved = false
-}
+let private profileSnapshot
+  (firstName: string)
+  (lastName: string)
+  (displayEmail: string)
+  (avatarUrl: string)
+  : ProfileSnapshot =
+  {
+    FirstName = firstName.Trim ()
+    LastName = lastName.Trim ()
+    DisplayEmail = displayEmail.Trim ()
+    AvatarUrl = avatarUrl
+  }
+
+let private profileSnapshotFromForm (f: ProfileForm) =
+  profileSnapshot f.FirstName f.LastName f.DisplayEmail f.AvatarUrl
+
+let private hasUnsavedChanges (f: ProfileForm) =
+  profileSnapshotFromForm f <> f.LastSavedSnapshot
+
+let private toForm (p: UserProfile) : ProfileForm =
+  let initialFirstName = p.FirstName
+  let initialLastName = p.LastName
+  let initialEmail = defaultArg p.DisplayEmail ""
+  let initialAvatar = defaultArg p.AvatarUrl ""
+  {
+    FirstName = p.FirstName
+    FirstNameError = None
+    LastName = p.LastName
+    LastNameError = None
+    DisplayEmail = initialEmail
+    DisplayEmailError = None
+    AvatarUrl = initialAvatar
+    LastSavedSnapshot = profileSnapshot initialFirstName initialLastName initialEmail initialAvatar
+    IsSaving = false
+    Error = None
+    Saved = false
+  }
 
 let private toDto (f: ProfileForm) : UserProfile = {
   FirstName = f.FirstName
@@ -160,56 +193,59 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     Cmd.none
 
   | Save, Loaded form ->
-    let normalizedFirstName = form.FirstName.Trim ()
-    let normalizedLastName = form.LastName.Trim ()
-    let normalizedEmail = form.DisplayEmail.Trim ()
+    if not (hasUnsavedChanges form) then
+      model, Cmd.none
+    else
+      let normalizedFirstName = form.FirstName.Trim ()
+      let normalizedLastName = form.LastName.Trim ()
+      let normalizedEmail = form.DisplayEmail.Trim ()
 
-    let firstNameError =
-      match Validation.validateRequiredText normalizedFirstName with
-      | Result.Ok _ -> None
-      | Result.Error err -> Some err
+      let firstNameError =
+        match Validation.validateRequiredText normalizedFirstName with
+        | Result.Ok _ -> None
+        | Result.Error err -> Some err
 
-    let lastNameError =
-      match Validation.validateRequiredText normalizedLastName with
-      | Result.Ok _ -> None
-      | Result.Error err -> Some err
+      let lastNameError =
+        match Validation.validateRequiredText normalizedLastName with
+        | Result.Ok _ -> None
+        | Result.Error err -> Some err
 
-    let emailError =
-      match Validation.validateRequiredEmail normalizedEmail with
-      | Result.Ok _ -> None
-      | Result.Error err -> Some err
+      let emailError =
+        match Validation.validateRequiredEmail normalizedEmail with
+        | Result.Ok _ -> None
+        | Result.Error err -> Some err
 
-    match firstNameError, lastNameError, emailError with
-    | Some _, _, _
-    | _, Some _, _
-    | _, _, Some _ ->
-      let invalidForm = {
-        form with
-            FirstName = normalizedFirstName
-            FirstNameError = firstNameError
-            LastName = normalizedLastName
-            LastNameError = lastNameError
-            DisplayEmail = normalizedEmail
-            DisplayEmailError = emailError
-            Error = None
-            Saved = false
-      }
-      {model with State = Loaded invalidForm}, Cmd.none
-    | None, None, None ->
-      let normalizedForm = {
-        form with
-            FirstName = normalizedFirstName
-            FirstNameError = None
-            LastName = normalizedLastName
-            LastNameError = None
-            DisplayEmail = normalizedEmail
-            DisplayEmailError = None
-      }
-      let dto = toDto normalizedForm
-      let save () =
-        ApiClient.ProfileApi.SaveProfile model.UserId dto
-      let saving = {normalizedForm with IsSaving = true; Error = None; Saved = false}
-      {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
+      match firstNameError, lastNameError, emailError with
+      | Some _, _, _
+      | _, Some _, _
+      | _, _, Some _ ->
+        let invalidForm = {
+          form with
+              FirstName = normalizedFirstName
+              FirstNameError = firstNameError
+              LastName = normalizedLastName
+              LastNameError = lastNameError
+              DisplayEmail = normalizedEmail
+              DisplayEmailError = emailError
+              Error = None
+              Saved = false
+        }
+        {model with State = Loaded invalidForm}, Cmd.none
+      | None, None, None ->
+        let normalizedForm = {
+          form with
+              FirstName = normalizedFirstName
+              FirstNameError = None
+              LastName = normalizedLastName
+              LastNameError = None
+              DisplayEmail = normalizedEmail
+              DisplayEmailError = None
+        }
+        let dto = toDto normalizedForm
+        let save () =
+          ApiClient.ProfileApi.SaveProfile model.UserId dto
+        let saving = {normalizedForm with IsSaving = true; Error = None; Saved = false}
+        {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
 
   | SaveResult (Result.Ok ()), Loaded form ->
     {
@@ -222,6 +258,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                   FirstNameError = None
                   LastNameError = None
                   DisplayEmailError = None
+                  LastSavedSnapshot = profileSnapshotFromForm form
             }
     },
     clearSaveToastCmd
@@ -266,6 +303,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
       prop.text msg
     ]
   | Loaded form ->
+    let disableSave = form.IsSaving || not (hasUnsavedChanges form)
     let avatarOpt =
       if String.IsNullOrWhiteSpace form.AvatarUrl then
         None
@@ -421,7 +459,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                           variant = Ui.Button.Variant.Primary
                           size = Ui.Button.Size.MdMobileFull
                           active = false
-                          disabled = form.IsSaving
+                          disabled = disableSave
                           onClick = (fun () -> dispatch Save)
                           text = if form.IsSaving then "Saving..." else "Save"
                         |}

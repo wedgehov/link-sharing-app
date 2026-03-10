@@ -16,6 +16,7 @@ type DragState = {DraggingClientId: int; DropTargetClientId: int}
 
 type LoadedState = {
   Links: LinkItem list
+  LastSavedLinks: Link list
   NextClientId: int
   IsSaving: bool
   Saved: bool
@@ -144,6 +145,16 @@ let private validateAndNormalizeLinks (links: LinkItem list) : Result<LinkItem l
 let private clearSaveToastCmd =
   Cmd.OfAsync.perform (fun () -> async {do! Async.Sleep 2500}) () (fun _ -> ClearSaveToast)
 
+let private linkSnapshot (links: Link list) =
+  links |> List.map (fun l -> l.Platform, l.Url, l.SortOrder)
+
+let private currentLinks (loadedState: LoadedState) =
+  loadedState.Links |> List.map (fun item -> item.Link)
+
+let private hasUnsavedChanges (loadedState: LoadedState) =
+  linkSnapshot (currentLinks loadedState)
+  <> linkSnapshot loadedState.LastSavedLinks
+
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadLinks, _ ->
@@ -158,6 +169,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     let newState =
       Loaded {
         Links = linkItems
+        LastSavedLinks = links
         NextClientId = nextId
         IsSaving = false
         Saved = false
@@ -263,32 +275,42 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     {model with State = newState}, Cmd.none
 
   | SaveLinks, Loaded loadedState ->
-    match validateAndNormalizeLinks loadedState.Links with
-    | Result.Error linkErrors ->
-      let invalidState = {
-        loadedState with
-            IsSaving = false
-            Saved = false
-            Error = None
-            LinkErrors = linkErrors
-      }
-      {model with State = Loaded invalidState}, Cmd.none
-    | Result.Ok normalizedLinks ->
-      let linksToSave = normalizedLinks |> List.map (fun item -> item.Link)
-      let save () =
-        ApiClient.LinkApi.SaveLinks model.UserId linksToSave
-      let savingState = {
-        loadedState with
-            Links = normalizedLinks
-            IsSaving = true
-            Saved = false
-            Error = None
-            LinkErrors = Map.empty
-      }
-      {model with State = Loaded savingState}, Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
+    if not (hasUnsavedChanges loadedState) then
+      model, Cmd.none
+    else
+      match validateAndNormalizeLinks loadedState.Links with
+      | Result.Error linkErrors ->
+        let invalidState = {
+          loadedState with
+              IsSaving = false
+              Saved = false
+              Error = None
+              LinkErrors = linkErrors
+        }
+        {model with State = Loaded invalidState}, Cmd.none
+      | Result.Ok normalizedLinks ->
+        let linksToSave = normalizedLinks |> List.map (fun item -> item.Link)
+        let save () =
+          ApiClient.LinkApi.SaveLinks model.UserId linksToSave
+        let savingState = {
+          loadedState with
+              Links = normalizedLinks
+              IsSaving = true
+              Saved = false
+              Error = None
+              LinkErrors = Map.empty
+        }
+        {model with State = Loaded savingState},
+        Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
 
   | SaveLinksResult (Result.Ok ()), Loaded loadedState ->
-    let newState = {loadedState with IsSaving = false; Saved = true; LinkErrors = Map.empty}
+    let newState = {
+      loadedState with
+          IsSaving = false
+          Saved = true
+          LinkErrors = Map.empty
+          LastSavedLinks = currentLinks loadedState
+    }
     {model with State = Loaded newState}, clearSaveToastCmd
 
   | ClearSaveToast, Loaded loadedState -> {model with State = Loaded {loadedState with Saved = false}}, Cmd.none
@@ -419,6 +441,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
     ]
   | Loaded loadedState ->
     let previewLinks = loadedState.Links |> List.map (fun i -> i.Link)
+    let disableSave = loadedState.IsSaving || not (hasUnsavedChanges loadedState)
     Html.div [
       prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6"
       prop.children [
@@ -621,7 +644,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                           variant = Ui.Button.Variant.Primary
                           size = Ui.Button.Size.MdMobileFull
                           active = false
-                          disabled = loadedState.IsSaving
+                          disabled = disableSave
                           onClick = (fun () -> dispatch SaveLinks)
                           text = if loadedState.IsSaving then "Saving..." else "Save"
                         |}
