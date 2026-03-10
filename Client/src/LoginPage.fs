@@ -96,12 +96,6 @@ let private fieldView (p: FieldProps) =
       "text-preset-4 text-red-500"
     else
       "text-preset-4 text-gray-900"
-  let borderClass =
-    if hasError then
-      "border-red-500"
-    else
-      "border-gray-200 focus:border-purple-600 focus:shadow-[0_0_32px_rgba(99,60,255,0.25)]"
-  let rightPadClass = if hasError then "md:pr-36" else ""
 
   Html.div [
     prop.className "flex flex-col gap-2 w-full"
@@ -111,42 +105,18 @@ let private fieldView (p: FieldProps) =
         prop.className labelClass
         prop.text p.Label
       ]
-      Html.div [
-        prop.className "relative"
-        prop.children [
-          Ui.Icon.view p.LeftIcon p.Label (Some "absolute left-4 top-1/2 -translate-y-1/2 size-4")
-          Html.input [
-            prop.id p.Id
-            prop.type' p.InputType
-            prop.value p.Value
-            prop.placeholder p.Placeholder
-            prop.autoFocus p.AutoFocus
-            prop.className (
-              String.concat " " [
-                "w-full h-14 rounded-[var(--radius-md)] bg-white border px-4 pl-11 text-preset-3-regular outline-none transition-all"
-                borderClass
-                rightPadClass
-              ]
-            )
-            prop.onChange p.OnChange
-          ]
-          match p.Error with
-          | Some e ->
-            Html.span [
-              prop.className
-                "hidden md:block absolute right-4 top-1/2 -translate-y-1/2 text-preset-4 text-red-500 text-right"
-              prop.text e
-            ]
-          | None -> Html.none
-        ]
-      ]
-      match p.Error with
-      | Some e ->
-        Html.p [
-          prop.className "block md:hidden text-preset-4 text-red-500 text-right"
-          prop.text e
-        ]
-      | None -> Html.none
+      Ui.TextField.viewWithoutLabel {
+        Id = p.Id
+        Label = p.Label
+        Value = p.Value
+        Placeholder = p.Placeholder
+        HelpText = None
+        Error = p.Error
+        AutoFocus = p.AutoFocus
+        InputType = p.InputType
+        LeftIcon = Some p.LeftIcon
+        OnChange = p.OnChange
+      }
     ]
   ]
 

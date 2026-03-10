@@ -11,8 +11,11 @@ open ClientShared
 
 type ProfileForm = {
   FirstName: string
+  FirstNameError: string option
   LastName: string
+  LastNameError: string option
   DisplayEmail: string
+  DisplayEmailError: string option
   AvatarUrl: string
   IsSaving: bool
   Error: string option
@@ -45,8 +48,11 @@ let private readFileAsDataUrl (_file: File) : JS.Promise<string> = jsNative
 
 let private toForm (p: UserProfile) : ProfileForm = {
   FirstName = p.FirstName
+  FirstNameError = None
   LastName = p.LastName
+  LastNameError = None
   DisplayEmail = defaultArg p.DisplayEmail ""
+  DisplayEmailError = None
   AvatarUrl = defaultArg p.AvatarUrl ""
   IsSaving = false
   Error = None
@@ -100,7 +106,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     Cmd.OfPromise.either readFileAsDataUrl file AvatarFileLoaded (fun _ -> AvatarFileLoadFailed)
 
   | AvatarFileLoaded avatarDataUrl, Loaded form ->
-    {model with State = Loaded {form with AvatarUrl = avatarDataUrl; Saved = false}}, Cmd.none
+    {model with State = Loaded {form with AvatarUrl = avatarDataUrl; Saved = false; Error = None}}, Cmd.none
 
   | AvatarFileLoadFailed, Loaded form ->
     {
@@ -109,23 +115,135 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     },
     Cmd.none
 
-  | SetFirstName v, Loaded form -> {model with State = Loaded {form with FirstName = v; Saved = false}}, Cmd.none
-  | SetLastName v, Loaded form -> {model with State = Loaded {form with LastName = v; Saved = false}}, Cmd.none
-  | SetDisplayEmail v, Loaded form -> {model with State = Loaded {form with DisplayEmail = v; Saved = false}}, Cmd.none
+  | SetFirstName v, Loaded form ->
+    {
+      model with
+          State =
+            Loaded {
+              form with
+                  FirstName = v
+                  FirstNameError = None
+                  Error = None
+                  Saved = false
+            }
+    },
+    Cmd.none
+  | SetLastName v, Loaded form ->
+    {
+      model with
+          State =
+            Loaded {
+              form with
+                  LastName = v
+                  LastNameError = None
+                  Error = None
+                  Saved = false
+            }
+    },
+    Cmd.none
+  | SetDisplayEmail v, Loaded form ->
+    {
+      model with
+          State =
+            Loaded {
+              form with
+                  DisplayEmail = v
+                  DisplayEmailError = None
+                  Error = None
+                  Saved = false
+            }
+    },
+    Cmd.none
 
   | Save, Loaded form ->
-    let dto = toDto form
-    let save () =
-      ApiClient.ProfileApi.SaveProfile model.UserId dto
-    let saving = {form with IsSaving = true; Error = None; Saved = false}
-    {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
+    let normalizedFirstName = form.FirstName.Trim ()
+    let normalizedLastName = form.LastName.Trim ()
+    let normalizedEmail = form.DisplayEmail.Trim ()
+
+    let firstNameError =
+      match Validation.validateRequiredText normalizedFirstName with
+      | Result.Ok _ -> None
+      | Result.Error err -> Some err
+
+    let lastNameError =
+      match Validation.validateRequiredText normalizedLastName with
+      | Result.Ok _ -> None
+      | Result.Error err -> Some err
+
+    let emailError =
+      match Validation.validateRequiredEmail normalizedEmail with
+      | Result.Ok _ -> None
+      | Result.Error err -> Some err
+
+    match firstNameError, lastNameError, emailError with
+    | Some _, _, _
+    | _, Some _, _
+    | _, _, Some _ ->
+      let invalidForm = {
+        form with
+            FirstName = normalizedFirstName
+            FirstNameError = firstNameError
+            LastName = normalizedLastName
+            LastNameError = lastNameError
+            DisplayEmail = normalizedEmail
+            DisplayEmailError = emailError
+            Error = None
+            Saved = false
+      }
+      {model with State = Loaded invalidForm}, Cmd.none
+    | None, None, None ->
+      let normalizedForm = {
+        form with
+            FirstName = normalizedFirstName
+            FirstNameError = None
+            LastName = normalizedLastName
+            LastNameError = None
+            DisplayEmail = normalizedEmail
+            DisplayEmailError = None
+      }
+      let dto = toDto normalizedForm
+      let save () =
+        ApiClient.ProfileApi.SaveProfile model.UserId dto
+      let saving = {normalizedForm with IsSaving = true; Error = None; Saved = false}
+      {model with State = Loaded saving}, Cmd.OfAsync.either save () SaveResult (asUnexpected SaveResult)
 
   | SaveResult (Result.Ok ()), Loaded form ->
-    {model with State = Loaded {form with IsSaving = false; Saved = true}}, Cmd.none
+    {
+      model with
+          State =
+            Loaded {
+              form with
+                  IsSaving = false
+                  Saved = true
+                  FirstNameError = None
+                  LastNameError = None
+                  DisplayEmailError = None
+            }
+    },
+    Cmd.none
 
   | SaveResult (Result.Error err), Loaded form ->
-    {model with State = Loaded {form with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}},
-    Cmd.none
+    let nextForm =
+      match err with
+      | Conflict -> {
+          form with
+              IsSaving = false
+              Saved = false
+              Error = None
+              FirstNameError = None
+              LastNameError = None
+              DisplayEmailError = Some (appErrorToMessage Conflict)
+        }
+      | _ -> {
+          form with
+              IsSaving = false
+              Saved = false
+              Error = Some (appErrorToMessage err)
+              FirstNameError = None
+              LastNameError = None
+              DisplayEmailError = None
+        }
+    {model with State = Loaded nextForm}, Cmd.none
 
   | _, _ -> model, Cmd.none
 
@@ -154,25 +272,40 @@ let view (model: Model) (dispatch: Msg -> unit) =
       (inputType: string)
       (value: string)
       (placeholder: string)
+      (error: string option)
       (onChange: string -> unit)
       =
+      let hasError = error |> Option.isSome
+      let labelClass =
+        if hasError then
+          "w-full text-preset-4 text-red-500 md:w-[240px] md:shrink-0 md:text-preset-3-regular md:text-red-500"
+        else
+          "w-full text-preset-4 text-gray-900 md:w-[240px] md:shrink-0 md:text-preset-3-regular md:text-gray-500"
+
       Html.div [
-        prop.className "flex flex-col items-start gap-2 w-full md:flex-row md:items-center md:gap-4"
+        prop.className "w-full flex flex-col items-start gap-2 md:flex-row md:items-center md:gap-4"
         prop.children [
           Html.label [
             prop.htmlFor id
-            prop.className
-              "w-full text-preset-4 text-gray-900 md:w-[240px] md:shrink-0 md:text-preset-3-regular md:text-gray-500"
+            prop.className labelClass
             prop.text label
           ]
-          Html.input [
-            prop.id id
-            prop.type' inputType
-            prop.value value
-            prop.placeholder placeholder
-            prop.className
-              "flex-1 min-w-0 bg-white border border-gray-200 rounded-[var(--radius-md)] px-4 py-4 text-preset-3-regular text-gray-900 placeholder:text-gray-500/50 focus:outline-none focus:border-purple-600"
-            prop.onChange onChange
+          Html.div [
+            prop.className "w-full flex-1 min-w-0"
+            prop.children [
+              Ui.TextField.viewWithoutLabel {
+                Id = id
+                Label = label
+                Value = value
+                Placeholder = placeholder
+                HelpText = None
+                Error = error
+                AutoFocus = false
+                InputType = inputType
+                LeftIcon = None
+                OnChange = onChange
+              }
+            ]
           ]
         ]
       ]
@@ -239,6 +372,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                               "text"
                               form.FirstName
                               "e.g. John"
+                              form.FirstNameError
                               (SetFirstName >> dispatch)
                             inputRow
                               "Last name*"
@@ -246,13 +380,15 @@ let view (model: Model) (dispatch: Msg -> unit) =
                               "text"
                               form.LastName
                               "e.g. Appleseed"
+                              form.LastNameError
                               (SetLastName >> dispatch)
                             inputRow
-                              "Email"
+                              "Email*"
                               "email"
                               "email"
                               form.DisplayEmail
                               "e.g. email@example.com"
+                              form.DisplayEmailError
                               (SetDisplayEmail >> dispatch)
                           ]
                         ]

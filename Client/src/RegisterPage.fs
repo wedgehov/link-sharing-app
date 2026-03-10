@@ -45,11 +45,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | SetConfirmPassword pass ->
     {model with ConfirmPassword = pass; FormError = None; ConfirmPasswordError = None}, Cmd.none
   | AttemptRegister ->
+    let normalizedEmailResult = Validation.validateRequiredEmail model.Email
     let emailError =
-      if String.IsNullOrWhiteSpace model.Email then
-        Some "Can't be empty"
-      else
-        None
+      match normalizedEmailResult with
+      | Result.Ok _ -> None
+      | Result.Error err -> Some err
     let passwordError =
       if
         String.IsNullOrWhiteSpace model.Password
@@ -76,7 +76,11 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
             PasswordError = None
             ConfirmPasswordError = None
       },
-      Auth.register {Email = model.Email; Password = model.Password} RegisterResult
+      let normalizedEmail =
+        match normalizedEmailResult with
+        | Result.Ok email -> email
+        | Result.Error _ -> model.Email
+      Auth.register {Email = normalizedEmail; Password = model.Password} RegisterResult
     | _ ->
       {
         model with
@@ -95,7 +99,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     let message = Auth.appErrorToMessage err
     let emailError =
       match err with
-      | Conflict -> Some "Please check again"
+      | Conflict -> Some message
       | _ -> None
     let formError =
       match err with
@@ -117,14 +121,6 @@ type private FieldProps = {
 }
 
 let private fieldView (p: FieldProps) =
-  let hasError = p.Error |> Option.isSome
-  let borderClass =
-    if hasError then
-      "border-red-500"
-    else
-      "border-gray-200 focus:border-purple-600 focus:shadow-[0_0_32px_rgba(99,60,255,0.25)]"
-  let rightPadClass = if hasError then "md:pr-36" else ""
-
   Html.div [
     prop.className "flex flex-col gap-2 w-full"
     prop.children [
@@ -133,49 +129,18 @@ let private fieldView (p: FieldProps) =
         prop.className "text-preset-4 text-gray-900"
         prop.text p.Label
       ]
-      Html.div [
-        prop.className "relative"
-        prop.children [
-          Ui.Icon.view p.LeftIcon p.Label (Some "absolute left-4 top-1/2 -translate-y-1/2 size-4")
-          Html.input [
-            prop.id p.Id
-            prop.type' p.InputType
-            prop.value p.Value
-            prop.placeholder p.Placeholder
-            prop.autoFocus p.AutoFocus
-            prop.className (
-              String.concat " " [
-                "w-full h-14 rounded-[var(--radius-md)] bg-white border px-4 pl-11 text-preset-3-regular outline-none transition-all"
-                borderClass
-                rightPadClass
-              ]
-            )
-            prop.onChange p.OnChange
-          ]
-          match p.Error with
-          | Some e ->
-            Html.span [
-              prop.className
-                "hidden md:block absolute right-4 top-1/2 -translate-y-1/2 text-preset-4 text-red-500 text-right"
-              prop.text e
-            ]
-          | None -> Html.none
-        ]
-      ]
-      match p.Error with
-      | Some e ->
-        Html.p [
-          prop.className "block md:hidden text-preset-4 text-red-500 text-right"
-          prop.text e
-        ]
-      | None ->
-        match p.HelpText with
-        | Some help ->
-          Html.p [
-            prop.className "text-preset-4 text-gray-500"
-            prop.text help
-          ]
-        | None -> Html.none
+      Ui.TextField.viewWithoutLabel {
+        Id = p.Id
+        Label = p.Label
+        Value = p.Value
+        Placeholder = p.Placeholder
+        HelpText = p.HelpText
+        Error = p.Error
+        AutoFocus = p.AutoFocus
+        InputType = p.InputType
+        LeftIcon = Some p.LeftIcon
+        OnChange = p.OnChange
+      }
     ]
   ]
 

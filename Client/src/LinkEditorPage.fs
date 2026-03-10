@@ -20,6 +20,7 @@ type LoadedState = {
   IsSaving: bool
   Saved: bool
   Error: string option
+  LinkErrors: Map<int, string>
   DragState: DragState option
   OpenDropdownForClientId: int option
   ProfileAvatarUrl: string option
@@ -52,6 +53,93 @@ type Msg =
 let init (userId: int) : Model * Cmd<Msg> =
   {UserId = userId; State = Loading}, Cmd.ofMsg LoadLinks
 
+let private hostForPlatform =
+  function
+  | Platform.GitHub -> "github.com"
+  | Platform.Twitter -> "twitter.com"
+  | Platform.LinkedIn -> "linkedin.com"
+  | Platform.YouTube -> "youtube.com"
+  | Platform.Facebook -> "facebook.com"
+  | Platform.Twitch -> "twitch.tv"
+  | Platform.DevTo -> "dev.to"
+  | Platform.CodeWars -> "codewars.com"
+  | Platform.FreeCodeCamp -> "freecodecamp.org"
+  | Platform.GitLab -> "gitlab.com"
+  | Platform.Hashnode -> "hashnode.com"
+  | Platform.StackOverflow -> "stackoverflow.com"
+  | Platform.FrontendMentor -> "frontendmentor.io"
+
+let private linkPlaceholderForPlatform (platform: Platform) =
+  match platform with
+  | Platform.GitHub -> "e.g. https://www.github.com/john-appleseed"
+  | Platform.Twitter -> "e.g. https://www.twitter.com/john-appleseed"
+  | Platform.LinkedIn -> "e.g. https://www.linkedin.com/in/john-appleseed"
+  | Platform.YouTube -> "e.g. https://www.youtube.com/@john-appleseed"
+  | Platform.Facebook -> "e.g. https://www.facebook.com/john-appleseed"
+  | Platform.Twitch -> "e.g. https://www.twitch.tv/john-appleseed"
+  | Platform.DevTo -> "e.g. https://www.dev.to/john-appleseed"
+  | Platform.CodeWars -> "e.g. https://www.codewars.com/users/john-appleseed"
+  | Platform.FreeCodeCamp -> "e.g. https://www.freecodecamp.org/john-appleseed"
+  | Platform.GitLab -> "e.g. https://www.gitlab.com/john-appleseed"
+  | Platform.Hashnode -> "e.g. https://www.hashnode.com/@john-appleseed"
+  | Platform.StackOverflow -> "e.g. https://www.stackoverflow.com/users/john-appleseed"
+  | Platform.FrontendMentor -> "e.g. https://www.frontendmentor.io/profile/john-appleseed"
+
+let private normalizeLinkUrl (platform: Platform) (rawUrl: string) : Result<string, string> =
+  if String.IsNullOrWhiteSpace rawUrl then
+    Result.Error "Can't be empty"
+  else
+    let expectedHost = hostForPlatform platform
+    let trimmed = rawUrl.Trim ()
+    let withoutScheme =
+      let lower = trimmed.ToLowerInvariant ()
+      if lower.StartsWith "https://" then
+        trimmed.Substring ("https://".Length)
+      elif lower.StartsWith "http://" then
+        trimmed.Substring ("http://".Length)
+      elif lower.StartsWith "//" then
+        trimmed.Substring (2)
+      else
+        trimmed
+    let withoutWww =
+      if withoutScheme.StartsWith ("www.", StringComparison.OrdinalIgnoreCase) then
+        withoutScheme.Substring ("www.".Length)
+      else
+        withoutScheme
+    let candidateLower = withoutWww.ToLowerInvariant ()
+    let expectedLower = expectedHost.ToLowerInvariant ()
+    let suffixOpt =
+      if candidateLower = expectedLower then
+        Some ""
+      elif
+        candidateLower.StartsWith (expectedLower + "/", StringComparison.Ordinal)
+        || candidateLower.StartsWith (expectedLower + "?", StringComparison.Ordinal)
+        || candidateLower.StartsWith (expectedLower + "#", StringComparison.Ordinal)
+      then
+        Some (withoutWww.Substring (expectedHost.Length))
+      else
+        None
+    match suffixOpt with
+    | Some suffix -> Result.Ok ("https://www." + expectedHost + suffix)
+    | None -> Result.Error "Please check URL"
+
+let private validateAndNormalizeLinks (links: LinkItem list) : Result<LinkItem list, Map<int, string>> =
+  let normalizedLinks, errors =
+    links
+    |> List.fold
+      (fun (validAcc, errorAcc) item ->
+        match normalizeLinkUrl item.Link.Platform item.Link.Url with
+        | Result.Ok normalizedUrl ->
+          let normalizedItem = {item with Link = {item.Link with Url = normalizedUrl}}
+          normalizedItem :: validAcc, errorAcc
+        | Result.Error errorMessage -> validAcc, errorAcc |> Map.add item.ClientId errorMessage
+      )
+      ([], Map.empty)
+  if errors |> Map.isEmpty then
+    normalizedLinks |> List.rev |> Result.Ok
+  else
+    Result.Error errors
+
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
   | LoadLinks, _ ->
@@ -70,6 +158,7 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         IsSaving = false
         Saved = false
         Error = None
+        LinkErrors = Map.empty
         DragState = None
         OpenDropdownForClientId = None
         ProfileAvatarUrl = None
@@ -122,7 +211,13 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
       // Re-assign SortOrder based on the new list order
       |> List.mapi (fun i item -> {item with Link = {item.Link with SortOrder = i + 1}})
 
-    let newState = Loaded {loadedState with Links = updatedLinks; Saved = false}
+    let newState =
+      Loaded {
+        loadedState with
+            Links = updatedLinks
+            LinkErrors = loadedState.LinkErrors |> Map.remove clientId
+            Saved = false
+      }
     {model with State = newState}, Cmd.none
 
   | UpdateLinkPlatform (clientId, platform), Loaded loadedState ->
@@ -135,7 +230,13 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
           item
       )
 
-    let newState = Loaded {loadedState with Links = updatedLinks; Saved = false}
+    let newState =
+      Loaded {
+        loadedState with
+            Links = updatedLinks
+            LinkErrors = loadedState.LinkErrors |> Map.remove clientId
+            Saved = false
+      }
     {model with State = newState}, Cmd.none
 
   | UpdateLinkUrl (clientId, url), Loaded loadedState ->
@@ -148,22 +249,52 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
           item
       )
 
-    let newState = Loaded {loadedState with Links = updatedLinks; Saved = false}
+    let newState =
+      Loaded {
+        loadedState with
+            Links = updatedLinks
+            LinkErrors = loadedState.LinkErrors |> Map.remove clientId
+            Saved = false
+      }
     {model with State = newState}, Cmd.none
 
   | SaveLinks, Loaded loadedState ->
-    let linksToSave = loadedState.Links |> List.map (fun item -> item.Link)
-    let save () =
-      ApiClient.LinkApi.SaveLinks model.UserId linksToSave
-    let savingState = {loadedState with IsSaving = true; Saved = false; Error = None}
-    {model with State = Loaded savingState}, Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
+    match validateAndNormalizeLinks loadedState.Links with
+    | Result.Error linkErrors ->
+      let invalidState = {
+        loadedState with
+            IsSaving = false
+            Saved = false
+            Error = None
+            LinkErrors = linkErrors
+      }
+      {model with State = Loaded invalidState}, Cmd.none
+    | Result.Ok normalizedLinks ->
+      let linksToSave = normalizedLinks |> List.map (fun item -> item.Link)
+      let save () =
+        ApiClient.LinkApi.SaveLinks model.UserId linksToSave
+      let savingState = {
+        loadedState with
+            Links = normalizedLinks
+            IsSaving = true
+            Saved = false
+            Error = None
+            LinkErrors = Map.empty
+      }
+      {model with State = Loaded savingState}, Cmd.OfAsync.either save () SaveLinksResult (asUnexpected SaveLinksResult)
 
   | SaveLinksResult (Result.Ok ()), Loaded loadedState ->
-    let newState = {loadedState with IsSaving = false; Saved = true}
+    let newState = {loadedState with IsSaving = false; Saved = true; LinkErrors = Map.empty}
     {model with State = Loaded newState}, Cmd.none
 
   | SaveLinksResult (Result.Error err), Loaded loadedState ->
-    let newState = {loadedState with IsSaving = false; Error = Some (appErrorToMessage err); Saved = false}
+    let newState = {
+      loadedState with
+          IsSaving = false
+          Error = Some (appErrorToMessage err)
+          Saved = false
+          LinkErrors = Map.empty
+    }
     {model with State = Loaded newState}, Cmd.none
 
   | DragStart clientId, Loaded loadedState ->
@@ -230,7 +361,17 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         else
           item
       )
-    {model with State = Loaded {loadedState with Links = updatedLinks; OpenDropdownForClientId = None; Saved = false}},
+    {
+      model with
+          State =
+            Loaded {
+              loadedState with
+                  Links = updatedLinks
+                  OpenDropdownForClientId = None
+                  LinkErrors = loadedState.LinkErrors |> Map.remove clientId
+                  Saved = false
+            }
+    },
     Cmd.none
 
   | _, _ -> model, Cmd.none
@@ -438,9 +579,9 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                         Id = $"link-url-{item.ClientId}"
                                         Label = "Link"
                                         Value = item.Link.Url
-                                        Placeholder = "e.g. https://www.github.com/john-appleseed"
+                                        Placeholder = linkPlaceholderForPlatform item.Link.Platform
                                         HelpText = None
-                                        Error = None
+                                        Error = loadedState.LinkErrors |> Map.tryFind item.ClientId
                                         AutoFocus = false
                                         InputType = "text"
                                         LeftIcon = Some Ui.Icon.Name.Link
