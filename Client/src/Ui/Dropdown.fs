@@ -40,11 +40,11 @@ let view (p: Props) =
     prop.children [
       Html.button [
         prop.className (
-          "w-full text-left border rounded-[var(--radius-md)] px-3 py-2 bg-white flex items-center justify-between "
+          "w-full text-left border rounded-[var(--radius-md)] h-14 px-4 bg-white flex items-center justify-between "
           + (if isActive then
-               "ring-2 ring-purple-600 border-purple-600"
+               "border-purple-600 shadow-[0_0_32px_rgba(99,60,255,0.25)]"
              else
-               "border-gray-300 hover:border-gray-400")
+               "border-gray-200 hover:border-gray-300")
         )
         prop.onClick (fun _ -> p.OnToggle ())
         prop.children [
@@ -53,7 +53,7 @@ let view (p: Props) =
             prop.children [
               Ui.Icon.view triggerIcon label (Some "w-4 h-4")
               Html.span [
-                prop.className "text-sm text-gray-900"
+                prop.className "text-preset-3-regular text-gray-900"
                 prop.text label
               ]
             ]
@@ -63,9 +63,9 @@ let view (p: Props) =
             "Open"
             (Some (
               if isActive then
-                "w-4 h-4 rotate-180 transition-transform"
+                "w-3 h-[6px] rotate-180 transition-transform"
               else
-                "w-4 h-4 transition-transform"
+                "w-3 h-[6px] transition-transform"
             ))
         ]
       ]
@@ -77,7 +77,7 @@ let view (p: Props) =
                "mt-1 "
              else
                "absolute left-0 right-0 mt-1 z-10 ")
-            + "bg-white border border-gray-200 rounded-[var(--radius-md)] shadow-[var(--shadow-md)] max-h-60 overflow-auto"
+            + "bg-white border border-gray-200 rounded-[var(--radius-md)] shadow-[0_0_32px_rgba(0,0,0,0.1)] overflow-auto p-4"
           )
           prop.children (
             let elements =
@@ -89,13 +89,13 @@ let view (p: Props) =
                   else
                     Html.div [
                       prop.key ("sep-" + i.Id)
-                      prop.className "h-px bg-gray-200 my-2 mx-4"
+                      prop.className "h-px bg-gray-200 w-full"
                     ]
                 let btn =
                   Html.button [
                     prop.key i.Id
                     prop.className (
-                      "w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 "
+                      "w-full flex items-center gap-3 py-0 text-preset-3-regular text-left "
                       + (
                         match p.SelectedId with
                         | Some sid when sid = i.Id -> "text-purple-600"

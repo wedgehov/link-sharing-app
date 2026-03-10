@@ -30,26 +30,26 @@ let private labelFor =
 
 let private iconClassesFor =
   function
-  | Platform.FrontendMentor -> "w-5 h-5"
-  | _ -> "w-5 h-5 filter brightness-0 invert"
+  | Platform.FrontendMentor -> "w-4 h-4"
+  | _ -> "w-4 h-4 filter brightness-0 invert"
 
 let private classesFor =
   function
   | Platform.GitHub -> "bg-gray-950 text-white"
-  | Platform.YouTube -> "bg-red-500 text-white"
-  | Platform.Twitter -> "bg-blue-500 text-white"
-  | Platform.LinkedIn -> "bg-blue-800 text-white"
-  | Platform.Facebook -> "bg-blue-500 text-white"
-  | Platform.Twitch -> "bg-purple-600 text-white"
-  | Platform.DevTo -> "bg-gray-950 text-white"
-  | Platform.CodeWars -> "bg-orange-600 text-white"
-  | Platform.FreeCodeCamp -> "bg-purple-950 text-white"
-  | Platform.GitLab -> "bg-orange-500 text-white"
-  | Platform.Hashnode -> "bg-pink-400 text-white"
-  | Platform.StackOverflow -> "bg-orange-600 text-white"
+  | Platform.YouTube -> "bg-red-550 text-white"
+  | Platform.Twitter -> "bg-[#43b7e9] text-white"
+  | Platform.LinkedIn -> "bg-blue-500 text-white"
+  | Platform.Facebook -> "bg-[#2442ac] text-white"
+  | Platform.Twitch -> "bg-[#ee3fc8] text-white"
+  | Platform.DevTo -> "bg-gray-900 text-white"
+  | Platform.CodeWars -> "bg-pink-900 text-white"
+  | Platform.FreeCodeCamp -> "bg-[#302267] text-white"
+  | Platform.GitLab -> "bg-[#eb4925] text-white"
+  | Platform.Hashnode -> "bg-blue-800 text-white"
+  | Platform.StackOverflow -> "bg-[#ec7100] text-white"
   | Platform.FrontendMentor -> "bg-white text-gray-950 border border-gray-300"
 
-type Props = {Platform: Platform; Url: string}
+type Props = {Platform: Platform; Url: string; Compact: bool}
 
 let private normalizeUrl (url: string) : string =
   if String.IsNullOrWhiteSpace url then
@@ -67,25 +67,39 @@ let private normalizeUrl (url: string) : string =
       "https://" + trimmed.TrimStart ('/')
 
 let view (p: Props) =
+  let sizeClasses, iconClass, textClass =
+    if p.Compact then
+      "h-11 px-4", "w-4 h-4", "text-preset-4"
+    else
+      "px-4 py-4", "w-5 h-5", "text-preset-3-regular"
+
+  let arrowClass =
+    if p.Platform = Platform.FrontendMentor then
+      "w-4 h-4 [filter:brightness(0)_saturate(100%)_invert(41%)_sepia(0%)_saturate(0%)_hue-rotate(183deg)_brightness(98%)_contrast(86%)]"
+    else
+      "w-4 h-4"
+
   Html.a [
     prop.href (normalizeUrl p.Url)
     prop.target "_blank"
     prop.rel "noopener noreferrer"
     prop.className (
-      "w-full flex items-center justify-between px-4 py-3 rounded-[var(--radius-md)] "
+      "w-full flex items-center justify-between rounded-[var(--radius-md)] "
+      + sizeClasses
+      + " "
       + classesFor p.Platform
     )
     prop.children [
       Html.div [
-        prop.className "flex items-center gap-3"
+        prop.className "flex items-center gap-2"
         prop.children [
-          Ui.Icon.view (iconFor p.Platform) (labelFor p.Platform) (Some (iconClassesFor p.Platform))
+          Ui.Icon.view (iconFor p.Platform) (labelFor p.Platform) (Some (iconClass + " " + iconClassesFor p.Platform))
           Html.span [
-            prop.className "text-preset-3-semibold"
+            prop.className textClass
             prop.text (labelFor p.Platform)
           ]
         ]
       ]
-      Ui.Icon.view Ui.Icon.Name.ArrowRight "Open" (Some "w-4 h-4")
+      Ui.Icon.view Ui.Icon.Name.ArrowRight "Open" (Some arrowClass)
     ]
   ]

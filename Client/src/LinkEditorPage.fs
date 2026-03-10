@@ -260,220 +260,233 @@ let private platformFromString (s: string) : Platform =
 
 let view (model: Model) (dispatch: Msg -> unit) =
   match model.State with
-  | Loading -> Html.p "Loading links..."
+  | Loading ->
+    Html.p [
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 text-preset-3-regular text-gray-500"
+      prop.text "Loading links..."
+    ]
   | Error msg ->
     Html.p [
-      prop.style [style.color "red"]
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 text-preset-3-regular text-red-600"
       prop.text msg
     ]
   | Loaded loadedState ->
     let previewLinks = loadedState.Links |> List.map (fun i -> i.Link)
     Html.div [
-      prop.className "max-w-5xl mx-auto p-6 lg:p-8 lg:grid lg:grid-cols-[380px_1fr] lg:gap-10"
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6"
       prop.children [
-        // Left: phone mockup (desktop only)
         Html.div [
-          prop.className "hidden lg:block"
-          prop.children [
-            Ui.PhoneMockup.view {Links = previewLinks; AvatarUrl = loadedState.ProfileAvatarUrl}
-          ]
-        ]
-
-        // Right: page content
-        Html.div [
-          prop.className "flex flex-col gap-6"
+          prop.className "flex items-start gap-4 md:gap-6 min-h-[calc(100vh-84px)] md:min-h-[calc(100vh-128px)]"
           prop.children [
             Html.div [
-              prop.className "flex flex-col gap-2"
+              prop.className
+                "hidden lg:flex self-start w-[560px] bg-white rounded-[var(--radius-lg)] p-6 items-start justify-center"
               prop.children [
-                Html.h1 [
-                  prop.className "text-preset-1"
-                  prop.text "Customize your links"
-                ]
-                Html.p [
-                  prop.className "text-preset-3-regular text-gray-500"
-                  prop.text "Add/edit/remove links below and then share all your profiles with the world!"
-                ]
+                Ui.PhoneMockup.view {Links = previewLinks; AvatarUrl = loadedState.ProfileAvatarUrl}
               ]
             ]
 
-            Ui.Button.view {|
-              variant = Ui.Button.Variant.Secondary
-              size = Ui.Button.Size.Md
-              active = false
-              disabled = false
-              onClick = (fun () -> dispatch AddNewLink)
-              text = "+ Add new link"
-            |}
-
             Html.div [
-              prop.className "flex flex-col gap-4"
+              prop.className "bg-white rounded-[var(--radius-lg)] flex-1 min-w-0 flex flex-col overflow-hidden"
               prop.children [
-                if loadedState.Links.IsEmpty then
-                  Html.div [
-                    prop.className "p-10 bg-gray-50 rounded-lg flex flex-col items-center justify-center text-center"
-                    prop.children [
-                      Html.img [
-                        prop.src "/images/illustration-empty.svg"
-                      ]
-                      Html.h2 [
-                        prop.className "text-preset-2 mt-6"
-                        prop.text "Let's get you started"
-                      ]
-                      Html.p [
-                        prop.className "text-preset-3-regular text-gray-500 mt-2 max-w-sm"
-                        prop.text
-                          "Use the “Add new link” button to get started. Once you have more than one link, you can reorder and edit them. We’re here to help you share your profiles with everyone!"
+                Html.div [
+                  prop.className "flex-1 p-6 md:p-10 flex flex-col gap-10"
+                  prop.children [
+                    Html.div [
+                      prop.className "flex flex-col gap-2"
+                      prop.children [
+                        Html.h1 [
+                          prop.className "text-preset-2 md:text-preset-1 text-gray-900"
+                          prop.text "Customize your links"
+                        ]
+                        Html.p [
+                          prop.className "text-preset-3-regular text-gray-500"
+                          prop.text "Add/edit/remove links below and then share all your profiles with the world!"
+                        ]
                       ]
                     ]
-                  ]
-                else
-                  for item in loadedState.Links do
-                    let isDraggingOver =
-                      match loadedState.DragState with
-                      | Some ds -> ds.DropTargetClientId = item.ClientId
-                      | None -> false
 
-                    let cardProps = [
-                      prop.draggable true
-                      prop.onDragStart (fun (ev: DragEvent) ->
-                        ev.dataTransfer.setData ("text/plain", string item.ClientId)
-                        |> ignore
-                        ev.dataTransfer.effectAllowed <- "move"
-                        dispatch (DragStart item.ClientId)
-                      )
-                      prop.onDragOver (fun (ev: DragEvent) ->
-                        ev.preventDefault () // This is necessary to allow a drop
-                        ev.dataTransfer.dropEffect <- "move"
-                        dispatch (DragOver item.ClientId)
-                      )
-                      prop.onDrop (fun (ev: DragEvent) ->
-                        ev.preventDefault ()
-                        // Access to data ensures consistency on Safari/Firefox even if we don't use it
-                        ev.dataTransfer.getData ("text/plain") |> ignore
-                        dispatch Drop
-                      )
-                      prop.className (if isDraggingOver then "bg-blue-50" else "")
-                      prop.key item.ClientId
-                    ]
+                    Html.div [
+                      prop.className "flex flex-col gap-6"
+                      prop.children [
+                        Ui.Button.view {|
+                          variant = Ui.Button.Variant.Secondary
+                          size = Ui.Button.Size.MdFull
+                          active = false
+                          disabled = false
+                          onClick = (fun () -> dispatch AddNewLink)
+                          text = "+ Add new link"
+                        |}
 
-                    Html.div (
-                      cardProps
-                      @ [
-                        prop.children [
+                        if loadedState.Links.IsEmpty then
                           Html.div [
-                            prop.className "bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] p-4"
+                            prop.className
+                              "px-5 py-16 bg-gray-50 rounded-[var(--radius-lg)] flex flex-col items-center justify-center text-center"
                             prop.children [
-                              Html.div [
-                                prop.className "flex justify-between items-center mb-3"
-                                prop.children [
-                                  Html.div [
-                                    prop.className "flex items-center gap-2"
-                                    prop.children [
-                                      Html.img [
-                                        prop.src "/images/icon-drag-and-drop.svg"
-                                        prop.alt "Drag handle"
-                                        prop.className "cursor-grab"
-                                      ]
-                                      Html.h3 [
-                                        prop.className "text-preset-3-semibold text-gray-500"
-                                        prop.text (sprintf "Link #%d" item.Link.SortOrder)
-                                      ]
-                                    ]
-                                  ]
-                                  Html.button [
-                                    prop.className "text-preset-3-regular text-gray-500 hover:text-red-600"
-                                    prop.onClick (fun _ -> dispatch (RemoveLink item.ClientId))
-                                    prop.text "Remove"
-                                  ]
-                                ]
+                              Html.img [
+                                prop.src "/images/illustration-empty.svg"
                               ]
-
-                              // Platform row (inline label)
-                              Html.div [
-                                prop.className "flex flex-col gap-1"
-                                prop.children [
-                                  Html.label [
-                                    prop.className "text-sm text-gray-700"
-                                    prop.text "Platform"
-                                  ]
-                                  (let items: Ui.Dropdown.Item list =
-                                    platformOptions
-                                    |> List.map (fun (name, p) -> {
-                                      Id = name
-                                      Label = name
-                                      Icon = Ui.PlatformLink.iconFor p
-                                    })
-                                   let openState =
-                                     match loadedState.OpenDropdownForClientId with
-                                     | Some id when id = item.ClientId -> true
-                                     | _ -> false
-                                   Ui.Dropdown.view {
-                                     Items = items
-                                     SelectedId = Some (string item.Link.Platform)
-                                     Open = openState
-                                     Placeholder = "Select platform"
-                                     Inline = true
-                                     OnToggle = (fun () -> dispatch (ToggleDropdown item.ClientId))
-                                     OnSelect =
-                                       (fun id -> dispatch (SelectPlatform (item.ClientId, platformFromString id)))
-                                   })
-                                ]
+                              Html.h2 [
+                                prop.className "text-preset-2 mt-6"
+                                prop.text "Let's get you started"
                               ]
-
-                              // Link row (inline label)
-                              Html.div [
-                                prop.className "flex flex-col gap-1"
-                                prop.children [
-                                  Html.label [
-                                    prop.className "text-sm text-gray-700"
-                                    prop.text "Link"
-                                  ]
-                                  Html.input [
-                                    prop.className "w-full p-2 border rounded"
-                                    prop.placeholder "e.g. https://www.github.com/john-appleseed"
-                                    prop.value item.Link.Url
-                                    prop.onChange (fun url -> dispatch (UpdateLinkUrl (item.ClientId, url)))
-                                  ]
-                                ]
+                              Html.p [
+                                prop.className "text-preset-3-regular text-gray-500 mt-2 max-w-sm"
+                                prop.text
+                                  "Use the “Add new link” button to get started. Once you have more than one link, you can reorder and edit them. We’re here to help you share your profiles with everyone!"
                               ]
                             ]
                           ]
-                        ]
-                      ]
-                    )
-              ]
-            ]
+                        else
+                          Html.div [
+                            prop.className "flex flex-col gap-6"
+                            prop.children [
+                              for item in loadedState.Links do
+                                let isDraggingOver =
+                                  match loadedState.DragState with
+                                  | Some ds -> ds.DropTargetClientId = item.ClientId
+                                  | None -> false
 
-            // Save Button Footer
-            Html.div [
-              prop.className "p-4 border-t sticky bottom-0 bg-white"
-              prop.children [
+                                let cardProps = [
+                                  prop.draggable true
+                                  prop.onDragStart (fun (ev: DragEvent) ->
+                                    ev.dataTransfer.setData ("text/plain", string item.ClientId)
+                                    |> ignore
+                                    ev.dataTransfer.effectAllowed <- "move"
+                                    dispatch (DragStart item.ClientId)
+                                  )
+                                  prop.onDragOver (fun (ev: DragEvent) ->
+                                    ev.preventDefault ()
+                                    ev.dataTransfer.dropEffect <- "move"
+                                    dispatch (DragOver item.ClientId)
+                                  )
+                                  prop.onDrop (fun (ev: DragEvent) ->
+                                    ev.preventDefault ()
+                                    ev.dataTransfer.getData ("text/plain") |> ignore
+                                    dispatch Drop
+                                  )
+                                  prop.className (
+                                    "bg-gray-50 rounded-[var(--radius-lg)] p-5 flex flex-col gap-3 "
+                                    + if isDraggingOver then "ring-2 ring-purple-300" else ""
+                                  )
+                                  prop.key item.ClientId
+                                ]
+
+                                Html.div (
+                                  cardProps
+                                  @ [
+                                    prop.children [
+                                      Html.div [
+                                        prop.className "flex justify-between items-center"
+                                        prop.children [
+                                          Html.div [
+                                            prop.className "flex items-center gap-2"
+                                            prop.children [
+                                              Html.img [
+                                                prop.src "/images/icon-drag-and-drop.svg"
+                                                prop.alt "Drag handle"
+                                                prop.className "cursor-grab"
+                                              ]
+                                              Html.h3 [
+                                                prop.className "text-preset-3-semibold text-gray-500"
+                                                prop.text (sprintf "Link #%d" item.Link.SortOrder)
+                                              ]
+                                            ]
+                                          ]
+                                          Html.button [
+                                            prop.className "text-preset-3-regular text-gray-500 hover:text-gray-900"
+                                            prop.onClick (fun _ -> dispatch (RemoveLink item.ClientId))
+                                            prop.text "Remove"
+                                          ]
+                                        ]
+                                      ]
+
+                                      Html.div [
+                                        prop.className "flex flex-col gap-1"
+                                        prop.children [
+                                          Html.label [
+                                            prop.className "text-preset-4 text-gray-500"
+                                            prop.text "Platform"
+                                          ]
+                                          (let items: Ui.Dropdown.Item list =
+                                            platformOptions
+                                            |> List.map (fun (name, p) -> {
+                                              Id = name
+                                              Label = name
+                                              Icon = Ui.PlatformLink.iconFor p
+                                            })
+                                           let openState =
+                                             match loadedState.OpenDropdownForClientId with
+                                             | Some id when id = item.ClientId -> true
+                                             | _ -> false
+                                           Ui.Dropdown.view {
+                                             Items = items
+                                             SelectedId = Some (string item.Link.Platform)
+                                             Open = openState
+                                             Placeholder = "Select platform"
+                                             Inline = true
+                                             OnToggle = (fun () -> dispatch (ToggleDropdown item.ClientId))
+                                             OnSelect =
+                                               (fun id ->
+                                                 dispatch (SelectPlatform (item.ClientId, platformFromString id))
+                                               )
+                                           })
+                                        ]
+                                      ]
+
+                                      Ui.TextField.view {
+                                        Id = $"link-url-{item.ClientId}"
+                                        Label = "Link"
+                                        Value = item.Link.Url
+                                        Placeholder = "e.g. https://www.github.com/john-appleseed"
+                                        HelpText = None
+                                        Error = None
+                                        AutoFocus = false
+                                        InputType = "text"
+                                        LeftIcon = Some Ui.Icon.Name.Link
+                                        OnChange = (fun url -> dispatch (UpdateLinkUrl (item.ClientId, url)))
+                                      }
+                                    ]
+                                  ]
+                                )
+                            ]
+                          ]
+                      ]
+                    ]
+                  ]
+                ]
+
                 Html.div [
-                  prop.className "flex justify-end"
+                  prop.className "border-t border-gray-200 p-4 md:px-10 md:py-6"
                   prop.children [
-                    if loadedState.Saved then
-                      Html.p [
-                        prop.className "text-green-700 mr-4 self-center"
-                        prop.text "Saved!"
+                    Html.div [
+                      prop.className
+                        "flex flex-col items-stretch gap-3 md:flex-row md:justify-end md:items-center md:gap-4"
+                      prop.children [
+                        match loadedState.Error with
+                        | Some err ->
+                          Html.p [
+                            prop.className "text-preset-4 text-red-600"
+                            prop.text err
+                          ]
+                        | None -> Html.none
+                        if loadedState.Saved then
+                          Html.p [
+                            prop.className "text-preset-4 text-green-700"
+                            prop.text "Saved!"
+                          ]
+                        else
+                          Html.none
+                        Ui.Button.view {|
+                          variant = Ui.Button.Variant.Primary
+                          size = Ui.Button.Size.MdMobileFull
+                          active = false
+                          disabled = loadedState.IsSaving
+                          onClick = (fun () -> dispatch SaveLinks)
+                          text = if loadedState.IsSaving then "Saving..." else "Save"
+                        |}
                       ]
-                    else
-                      Html.none
-                    match loadedState.Error with
-                    | Some err ->
-                      Html.p [
-                        prop.className "text-red-600 mr-4 self-center"
-                        prop.text err
-                      ]
-                    | None -> Html.none
-                    Ui.Button.view {|
-                      variant = Ui.Button.Variant.Primary
-                      size = Ui.Button.Size.Md
-                      active = false
-                      disabled = loadedState.IsSaving
-                      onClick = (fun () -> dispatch SaveLinks)
-                      text = if loadedState.IsSaving then "Saving..." else "Save"
-                    |}
+                    ]
                   ]
                 ]
               ]

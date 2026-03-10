@@ -16,21 +16,35 @@ type Props = {
 }
 
 let view (p: Props) =
+  let hasError = p.Error |> Option.isSome
+  let iconColorClass =
+    match hasError with
+    | true ->
+      "[filter:brightness(0)_saturate(100%)_invert(39%)_sepia(87%)_saturate(2520%)_hue-rotate(333deg)_brightness(103%)_contrast(102%)]"
+    | false -> ""
+
   Html.div [
     prop.className "flex flex-col gap-1"
     prop.children [
       Html.label [
         prop.htmlFor p.Id
-        prop.className "text-sm text-gray-700"
+        prop.className "text-preset-4 text-gray-500"
         prop.text p.Label
       ]
       Html.div [
         prop.className "relative"
         prop.children [
           // Optional left icon
-          match p.LeftIcon with
-          | Some icon -> Ui.Icon.view icon p.Label (Some "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4")
-          | None -> Html.none
+          (match p.LeftIcon with
+           | Some icon ->
+             Ui.Icon.view
+               icon
+               p.Label
+               (Some (
+                 "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 "
+                 + iconColorClass
+               ))
+           | None -> Html.none)
 
           // The input itself
           Html.input [
@@ -41,19 +55,19 @@ let view (p: Props) =
             prop.className (
               let leftPad =
                 match p.LeftIcon with
-                | Some _ -> " pl-9"
+                | Some _ -> " pl-11"
                 | None -> ""
               let errorPad =
                 match p.Error with
-                | Some _ -> " md:pr-28"
+                | Some _ -> " md:pr-36"
                 | None -> ""
-              "w-full border rounded-[var(--radius-md)] p-2 outline-none transition-all"
+              "w-full border rounded-[var(--radius-md)] h-14 px-4 text-preset-3-regular outline-none transition-all bg-white"
               + leftPad
               + errorPad
               + " "
               + match p.Error with
                 | Some _ -> "border-red-500"
-                | None -> "border-gray-300 focus:ring-2 focus:ring-purple-600 focus:border-purple-600"
+                | None -> "border-gray-200 focus:border-purple-600 focus:shadow-[0_0_32px_rgba(99,60,255,0.25)]"
             )
             if p.AutoFocus then
               prop.autoFocus true
@@ -64,7 +78,8 @@ let view (p: Props) =
           match p.Error with
           | Some e ->
             Html.span [
-              prop.className "hidden md:block absolute right-3 top-1/2 -translate-y-1/2 text-xs text-red-600 text-right"
+              prop.className
+                "hidden md:block absolute right-4 top-1/2 -translate-y-1/2 text-preset-4 text-red-500 text-right"
               prop.text e
             ]
           | None -> Html.none
@@ -75,14 +90,14 @@ let view (p: Props) =
       match p.Error with
       | Some e ->
         Html.p [
-          prop.className "block md:hidden text-xs text-red-600 text-right"
+          prop.className "block md:hidden text-preset-4 text-red-500 text-right"
           prop.text e
         ]
       | None ->
         match p.HelpText with
         | Some h ->
           Html.p [
-            prop.className "text-xs text-gray-600"
+            prop.className "text-preset-4 text-gray-500"
             prop.text h
           ]
         | None -> Html.none

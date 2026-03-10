@@ -101,7 +101,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
 
                   Ui.Button.view {|
                     variant = Ui.Button.Variant.Primary
-                    size = Ui.Button.Size.Md
+                    size = Ui.Button.Size.MdFull
                     active = false
                     disabled = model.IsLoading
                     onClick = (fun () -> ())

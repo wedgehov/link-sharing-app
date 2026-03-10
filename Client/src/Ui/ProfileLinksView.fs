@@ -55,7 +55,7 @@ let view (profile: UserProfile) (links: Link list) =
             Html.li [
               prop.key (string (defaultArg l.Id 0))
               prop.children [
-                Ui.PlatformLink.view {Platform = l.Platform; Url = l.Url}
+                Ui.PlatformLink.view {Platform = l.Platform; Url = l.Url; Compact = false}
               ]
             ]
         ]

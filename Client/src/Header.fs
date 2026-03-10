@@ -11,25 +11,21 @@ let view (userId: int) (onNavigate: Page -> unit) =
   let linksPath = href linksPage
   let profilePath = href profilePage
 
-  // Left group: brand (icon + text)
   let leftGroup =
-    let brand =
-      Html.div [
-        prop.className "flex items-center gap-2"
-        prop.children [
-          Html.img [
-            prop.src "/images/logo-devlinks-small.svg"
-            prop.alt "Devlinks"
-          ]
-          Html.span [
-            prop.className "text-preset-3-semibold text-gray-900"
-            prop.text "devlinks"
-          ]
+    Html.div [
+      prop.className "flex items-center"
+      prop.children [
+        Html.img [
+          prop.src "/images/logo-devlinks-small.svg"
+          prop.alt "Devlinks"
+          prop.className "w-8 h-8 md:hidden"
+        ]
+        Html.img [
+          prop.src "/images/logo-devlinks-large.svg"
+          prop.alt "Devlinks"
+          prop.className "hidden md:block h-8 w-auto"
         ]
       ]
-    Html.div [
-      prop.className "flex items-center gap-4"
-      prop.children [brand]
     ]
 
   // Middle group: compact paired tabs (Links | Profile Details)
@@ -44,52 +40,86 @@ let view (userId: int) (onNavigate: Page -> unit) =
       | UserProfilePage _ -> true
       | _ -> false
 
+    let purpleIconFilter =
+      "[filter:brightness(0)_saturate(100%)_invert(27%)_sepia(98%)_saturate(5360%)_hue-rotate(249deg)_brightness(101%)_contrast(101%)]"
+
     let stateClasses isActive =
       if isActive then
-        "text-purple-600 bg-purple-300/20"
+        "text-purple-600 bg-gray-100"
       else
-        "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
 
     Html.div [
-      prop.className "inline-flex gap-4"
+      prop.className "inline-flex"
       prop.children [
         Html.a [
           prop.className (
-            "px-4 py-2 text-preset-3-semibold inline-flex items-center gap-2 rounded-[var(--radius-md)] "
+            "px-6 py-4 text-preset-3-semibold inline-flex items-center gap-0 md:gap-2 rounded-[var(--radius-md)] transition-colors "
             + stateClasses isLinksActive
           )
           prop.href linksPath
           prop.children [
-            Ui.Icon.view Ui.Icon.Name.LinksHeader "Links" (Some "w-4 h-4")
-            Html.span [prop.text "Links"]
+            Ui.Icon.view
+              Ui.Icon.Name.LinksHeader
+              "Links"
+              (Some (
+                if isLinksActive then
+                  "w-5 h-5 " + purpleIconFilter
+                else
+                  "w-5 h-5"
+              ))
+            Html.span [
+              prop.className "hidden md:inline"
+              prop.text "Links"
+            ]
           ]
         ]
         Html.a [
           prop.className (
-            "px-4 py-2 text-preset-3-semibold inline-flex items-center gap-2 rounded-[var(--radius-md)] "
+            "px-6 py-4 text-preset-3-semibold inline-flex items-center gap-0 md:gap-2 rounded-[var(--radius-md)] transition-colors "
             + stateClasses isProfileActive
           )
           prop.href profilePath
           prop.children [
-            Ui.Icon.view Ui.Icon.Name.ProfileHeader "Profile Details" (Some "w-4 h-4")
-            Html.span [prop.text "Profile Details"]
+            Ui.Icon.view
+              Ui.Icon.Name.ProfileHeader
+              "Profile Details"
+              (Some (
+                if isProfileActive then
+                  "w-5 h-5 " + purpleIconFilter
+                else
+                  "w-5 h-5"
+              ))
+            Html.span [
+              prop.className "hidden md:inline"
+              prop.text "Profile Details"
+            ]
           ]
         ]
       ]
     ]
 
-  // Right group: Preview tab
   let rightGroup =
-    Ui.Button.view {|
-      variant = Ui.Button.Variant.Secondary
-      size = Ui.Button.Size.Md
-      active = false
-      disabled = false
-      onClick = (fun () -> onNavigate previewPage)
-      text = "Preview"
-    |}
+    Html.button [
+      prop.className
+        "border border-purple-600 text-purple-600 text-preset-3-semibold rounded-[var(--radius-md)] inline-flex items-center justify-center p-4 md:px-6 md:py-4 cursor-pointer hover:bg-purple-300/20 transition-colors"
+      prop.onClick (fun _ -> onNavigate previewPage)
+      prop.children [
+        Ui.Icon.view Ui.Icon.Name.PreviewHeader "Preview" (Some "w-5 h-5 md:hidden")
+        Html.span [
+          prop.className "hidden md:inline"
+          prop.text "Preview"
+        ]
+      ]
+    ]
 
   Html.nav [
-    prop.className "p-4 border-b bg-white flex items-center justify-between"
-    prop.children [leftGroup; centerGroup; rightGroup]
+    prop.className "bg-gray-50 md:px-6 md:pt-6"
+    prop.children [
+      Html.div [
+        prop.className
+          "bg-white rounded-[var(--radius-lg)] pl-6 pr-4 py-4 flex items-center justify-between gap-2 md:gap-4"
+        prop.children [leftGroup; centerGroup; rightGroup]
+      ]
+    ]
   ]

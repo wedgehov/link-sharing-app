@@ -32,11 +32,14 @@ type Props = {
 
 let private tabClasses (isActive: bool) =
   if isActive then
-    "text-purple-600 bg-purple-300/20"
+    "text-purple-600 bg-[#efebff]"
   else
-    "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+    "text-gray-500 hover:text-purple-600"
 
 let view (p: Props) =
+  let purpleIconFilter =
+    "[filter:brightness(0)_saturate(100%)_invert(27%)_sepia(98%)_saturate(5360%)_hue-rotate(249deg)_brightness(101%)_contrast(101%)]"
+
   let mkTab (id: TabId) =
     let isActive = id = p.Active
     Html.a [
@@ -47,11 +50,19 @@ let view (p: Props) =
       )
       prop.onClick (fun _ -> p.OnSelect id)
       prop.className (
-        "px-4 py-2 rounded-[var(--radius-md)] text-preset-3-semibold inline-flex items-center gap-2 "
+        "px-6 py-4 rounded-[var(--radius-md)] text-preset-3-semibold inline-flex items-center gap-2 transition-colors "
         + tabClasses isActive
       )
       prop.children [
-        Ui.Icon.view (iconFor id) (label id) (Some "w-4 h-4")
+        Ui.Icon.view
+          (iconFor id)
+          (label id)
+          (Some (
+            if isActive then
+              "w-5 h-5 " + purpleIconFilter
+            else
+              "w-5 h-5"
+          ))
         Html.span [prop.text (label id)]
       ]
     ]

@@ -131,140 +131,167 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
 let view (model: Model) (dispatch: Msg -> unit) =
   match model.State with
-  | Loading -> Html.p "Loading profile..."
+  | Loading ->
+    Html.p [
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 text-preset-3-regular text-gray-500"
+      prop.text "Loading profile..."
+    ]
   | Error msg ->
     Html.p [
-      prop.style [style.color "red"]
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6 text-preset-3-regular text-red-600"
       prop.text msg
     ]
   | Loaded form ->
-    Html.div [
-      prop.className "max-w-5xl mx-auto p-6 lg:p-8 lg:grid lg:grid-cols-[380px_1fr] lg:gap-10"
-      prop.children [
-        // Left: phone mockup (desktop only)
-        Html.div [
-          prop.className "hidden lg:block"
-          prop.children [
-            // Show avatar (from current form state) and saved links in the phone mockup
-            let avatarOpt =
-              if String.IsNullOrWhiteSpace form.AvatarUrl then
-                None
-              else
-                Some form.AvatarUrl
-            Ui.PhoneMockup.view {Links = model.PreviewLinks; AvatarUrl = avatarOpt}
+    let avatarOpt =
+      if String.IsNullOrWhiteSpace form.AvatarUrl then
+        None
+      else
+        Some form.AvatarUrl
+
+    let inputRow
+      (label: string)
+      (id: string)
+      (inputType: string)
+      (value: string)
+      (placeholder: string)
+      (onChange: string -> unit)
+      =
+      Html.div [
+        prop.className "flex flex-col items-start gap-2 w-full md:flex-row md:items-center md:gap-4"
+        prop.children [
+          Html.label [
+            prop.htmlFor id
+            prop.className
+              "w-full text-preset-4 text-gray-900 md:w-[240px] md:shrink-0 md:text-preset-3-regular md:text-gray-500"
+            prop.text label
+          ]
+          Html.input [
+            prop.id id
+            prop.type' inputType
+            prop.value value
+            prop.placeholder placeholder
+            prop.className
+              "flex-1 min-w-0 bg-white border border-gray-200 rounded-[var(--radius-md)] px-4 py-4 text-preset-3-regular text-gray-900 placeholder:text-gray-500/50 focus:outline-none focus:border-purple-600"
+            prop.onChange onChange
           ]
         ]
+      ]
 
-        // Right: content
+    Html.div [
+      prop.className "bg-gray-50 px-4 pt-4 pb-4 md:px-6 md:pt-6 md:pb-6"
+      prop.children [
         Html.div [
-          prop.className "max-w-2xl flex flex-col gap-6"
+          prop.className "flex items-start gap-4 md:gap-6 min-h-[calc(100vh-84px)] md:min-h-[calc(100vh-128px)]"
           prop.children [
             Html.div [
-              prop.className "flex flex-col gap-2"
+              prop.className
+                "hidden lg:flex w-[560px] bg-white rounded-[var(--radius-lg)] p-6 items-center justify-center"
               prop.children [
-                Html.h1 [
-                  prop.className "text-preset-1"
-                  prop.text "Profile details"
-                ]
-                Html.p [
-                  prop.className "text-preset-3-regular text-gray-500"
-                  prop.text "Add your details to create a personal touch to your profile."
-                ]
+                Ui.PhoneMockup.view {Links = model.PreviewLinks; AvatarUrl = avatarOpt}
               ]
             ]
 
             Html.div [
-              prop.className "bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] p-4"
-              prop.children [
-                // Profile picture row (inline label)
-                Html.div [
-                  prop.className "flex flex-col gap-1"
-                  prop.children [
-                    Html.label [
-                      prop.className "text-sm text-gray-700"
-                      prop.text "Profile picture"
-                    ]
-                    Ui.ImageUpload.view {
-                      ImageUrl =
-                        if String.IsNullOrWhiteSpace form.AvatarUrl then
-                          None
-                        else
-                          Some form.AvatarUrl
-                      OnSelected = (SelectAvatarFile >> dispatch)
-                    }
-                  ]
-                ]
-
-                Ui.TextField.view {
-                  Id = "first-name"
-                  Label = "First Name"
-                  Value = form.FirstName
-                  Placeholder = "e.g. John"
-                  HelpText = None
-                  Error = None
-                  AutoFocus = false
-                  InputType = "text"
-                  LeftIcon = None
-                  OnChange = (SetFirstName >> dispatch)
-                }
-
-                Ui.TextField.view {
-                  Id = "last-name"
-                  Label = "Last Name"
-                  Value = form.LastName
-                  Placeholder = "e.g. Appleseed"
-                  HelpText = None
-                  Error = None
-                  AutoFocus = false
-                  InputType = "text"
-                  LeftIcon = None
-                  OnChange = (SetLastName >> dispatch)
-                }
-
-                Ui.TextField.view {
-                  Id = "email"
-                  Label = "Email"
-                  Value = form.DisplayEmail
-                  Placeholder = "e.g. john.appleseed@example.com"
-                  HelpText = None
-                  Error = None
-                  AutoFocus = false
-                  InputType = "email"
-                  LeftIcon = Some Ui.Icon.Name.Email
-                  OnChange = (SetDisplayEmail >> dispatch)
-                }
-
-                match form.Error with
-                | Some e ->
-                  Html.p [
-                    prop.className "text-sm text-red-600"
-                    prop.text e
-                  ]
-                | None -> Html.none
-              ]
-            ]
-
-            Html.div [
-              prop.className "p-4 border-t sticky bottom-0 bg-white"
+              prop.className "bg-white rounded-[var(--radius-lg)] flex-1 min-w-0 flex flex-col overflow-hidden"
               prop.children [
                 Html.div [
-                  prop.className "flex justify-end items-center gap-4"
+                  prop.className "flex-1 p-6 md:p-10 flex flex-col gap-10"
                   prop.children [
-                    if form.Saved then
-                      Html.p [
-                        prop.className "text-green-700"
-                        prop.text "Saved!"
+                    Html.div [
+                      prop.className "flex flex-col gap-2"
+                      prop.children [
+                        Html.h1 [
+                          prop.className "text-preset-2 md:text-preset-1 text-gray-900"
+                          prop.text "Profile Details"
+                        ]
+                        Html.p [
+                          prop.className "text-preset-3-regular text-gray-500"
+                          prop.text "Add your details to create a personal touch to your profile."
+                        ]
                       ]
-                    else
-                      Html.none
-                    Ui.Button.view {|
-                      variant = Ui.Button.Variant.Primary
-                      size = Ui.Button.Size.Md
-                      active = false
-                      disabled = form.IsSaving
-                      onClick = (fun () -> dispatch Save)
-                      text = if form.IsSaving then "Saving..." else "Save"
-                    |}
+                    ]
+
+                    Html.div [
+                      prop.className "flex flex-col gap-6"
+                      prop.children [
+                        Html.div [
+                          prop.className "bg-gray-50 rounded-[var(--radius-lg)] p-6"
+                          prop.children [
+                            Html.div [
+                              prop.className "flex flex-col items-start gap-4 w-full md:flex-row md:items-center"
+                              prop.children [
+                                Html.p [
+                                  prop.className "w-full text-preset-3-regular text-gray-500 md:w-[240px] md:shrink-0"
+                                  prop.text "Profile picture"
+                                ]
+                                Ui.ImageUpload.view {ImageUrl = avatarOpt; OnSelected = (SelectAvatarFile >> dispatch)}
+                              ]
+                            ]
+                          ]
+                        ]
+
+                        Html.div [
+                          prop.className "bg-gray-50 rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 md:gap-4"
+                          prop.children [
+                            inputRow
+                              "First name*"
+                              "first-name"
+                              "text"
+                              form.FirstName
+                              "e.g. John"
+                              (SetFirstName >> dispatch)
+                            inputRow
+                              "Last name*"
+                              "last-name"
+                              "text"
+                              form.LastName
+                              "e.g. Appleseed"
+                              (SetLastName >> dispatch)
+                            inputRow
+                              "Email"
+                              "email"
+                              "email"
+                              form.DisplayEmail
+                              "e.g. email@example.com"
+                              (SetDisplayEmail >> dispatch)
+                          ]
+                        ]
+                      ]
+                    ]
+                  ]
+                ]
+
+                Html.div [
+                  prop.className "border-t border-gray-200 p-4 md:px-10 md:py-6"
+                  prop.children [
+                    Html.div [
+                      prop.className
+                        "flex flex-col items-stretch gap-3 md:flex-row md:justify-end md:items-center md:gap-4"
+                      prop.children [
+                        match form.Error with
+                        | Some e ->
+                          Html.p [
+                            prop.className "text-preset-4 text-red-600"
+                            prop.text e
+                          ]
+                        | None -> Html.none
+                        if form.Saved then
+                          Html.p [
+                            prop.className "text-preset-4 text-green-700"
+                            prop.text "Saved!"
+                          ]
+                        else
+                          Html.none
+                        Ui.Button.view {|
+                          variant = Ui.Button.Variant.Primary
+                          size = Ui.Button.Size.MdMobileFull
+                          active = false
+                          disabled = form.IsSaving
+                          onClick = (fun () -> dispatch Save)
+                          text = if form.IsSaving then "Saving..." else "Save"
+                        |}
+                      ]
+                    ]
                   ]
                 ]
               ]
