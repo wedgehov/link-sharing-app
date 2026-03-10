@@ -44,6 +44,7 @@ type Msg =
   | RemoveLink of clientId: int
   | SaveLinks
   | SaveLinksResult of Result<unit, AppError>
+  | ClearSaveToast
   | DragStart of clientId: int
   | DragOver of clientId: int
   | Drop
@@ -139,6 +140,9 @@ let private validateAndNormalizeLinks (links: LinkItem list) : Result<LinkItem l
     normalizedLinks |> List.rev |> Result.Ok
   else
     Result.Error errors
+
+let private clearSaveToastCmd =
+  Cmd.OfAsync.perform (fun () -> async {do! Async.Sleep 2500}) () (fun _ -> ClearSaveToast)
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg, model.State with
@@ -285,7 +289,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 
   | SaveLinksResult (Result.Ok ()), Loaded loadedState ->
     let newState = {loadedState with IsSaving = false; Saved = true; LinkErrors = Map.empty}
-    {model with State = Loaded newState}, Cmd.none
+    {model with State = Loaded newState}, clearSaveToastCmd
+
+  | ClearSaveToast, Loaded loadedState -> {model with State = Loaded {loadedState with Saved = false}}, Cmd.none
 
   | SaveLinksResult (Result.Error err), Loaded loadedState ->
     let newState = {
@@ -611,13 +617,6 @@ let view (model: Model) (dispatch: Msg -> unit) =
                             prop.text err
                           ]
                         | None -> Html.none
-                        if loadedState.Saved then
-                          Html.p [
-                            prop.className "text-preset-4 text-green-700"
-                            prop.text "Saved!"
-                          ]
-                        else
-                          Html.none
                         Ui.Button.view {|
                           variant = Ui.Button.Variant.Primary
                           size = Ui.Button.Size.MdMobileFull
@@ -634,5 +633,14 @@ let view (model: Model) (dispatch: Msg -> unit) =
             ]
           ]
         ]
+        if loadedState.Saved then
+          Ui.Toast.view {
+            Message = "Your changes have been successfully saved!"
+            Variant = Ui.Toast.Variant.Success
+            Icon = Some Ui.Icon.Name.ChangesSaved
+            Uppercase = true
+          }
+        else
+          Html.none
       ]
     ]

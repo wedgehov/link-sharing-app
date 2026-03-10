@@ -13,6 +13,7 @@
     <Compile Include="Validation.fs" />
     <Compile Include="Ui/Button.fs" />
     <Compile Include="Ui/Icon.fs" />
+    <Compile Include="Ui/Toast.fs" />
     <Compile Include="Ui/TextField.fs" />
     <Compile Include="Ui/ImageUpload.fs" />
     <Compile Include="Ui/Dropdown.fs" />

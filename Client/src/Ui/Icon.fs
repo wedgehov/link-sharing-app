@@ -24,6 +24,7 @@ type Name =
   | UploadImage
   | ArrowRight
   | ChangesSaved
+  | LinkCopied
   | LinksHeader
   | ProfileHeader
   | PreviewHeader
@@ -50,6 +51,7 @@ let private pathFor =
   | Name.UploadImage -> "/images/icon-upload-image.svg"
   | Name.ArrowRight -> "/images/icon-arrow-right.svg"
   | Name.ChangesSaved -> "/images/icon-changes-saved.svg"
+  | Name.LinkCopied -> "/images/icon-link-copied-to-clipboard.svg"
   | Name.LinksHeader -> "/images/icon-links-header.svg"
   | Name.ProfileHeader -> "/images/icon-profile-details-header.svg"
   | Name.PreviewHeader -> "/images/icon-preview-header.svg"

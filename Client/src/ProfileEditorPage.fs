@@ -42,6 +42,7 @@ type Msg =
   | SetDisplayEmail of string
   | Save
   | SaveResult of Result<unit, AppError>
+  | ClearSaveToast
 
 [<Emit("new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error || new Error('Could not read file')); reader.readAsDataURL($0); })")>]
 let private readFileAsDataUrl (_file: File) : JS.Promise<string> = jsNative
@@ -73,6 +74,9 @@ let private toDto (f: ProfileForm) : UserProfile = {
     else
       Some f.AvatarUrl
 }
+
+let private clearSaveToastCmd =
+  Cmd.OfAsync.perform (fun () -> async {do! Async.Sleep 2500}) () (fun _ -> ClearSaveToast)
 
 let init (userId: int) : Model * Cmd<Msg> =
   {UserId = userId; State = Loading; PreviewLinks = []},
@@ -220,7 +224,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
                   DisplayEmailError = None
             }
     },
-    Cmd.none
+    clearSaveToastCmd
+
+  | ClearSaveToast, Loaded form -> {model with State = Loaded {form with Saved = false}}, Cmd.none
 
   | SaveResult (Result.Error err), Loaded form ->
     let nextForm =
@@ -411,13 +417,6 @@ let view (model: Model) (dispatch: Msg -> unit) =
                             prop.text e
                           ]
                         | None -> Html.none
-                        if form.Saved then
-                          Html.p [
-                            prop.className "text-preset-4 text-green-700"
-                            prop.text "Saved!"
-                          ]
-                        else
-                          Html.none
                         Ui.Button.view {|
                           variant = Ui.Button.Variant.Primary
                           size = Ui.Button.Size.MdMobileFull
@@ -434,5 +433,14 @@ let view (model: Model) (dispatch: Msg -> unit) =
             ]
           ]
         ]
+        if form.Saved then
+          Ui.Toast.view {
+            Message = "Your changes have been successfully saved!"
+            Variant = Ui.Toast.Variant.Success
+            Icon = Some Ui.Icon.Name.ChangesSaved
+            Uppercase = true
+          }
+        else
+          Html.none
       ]
     ]

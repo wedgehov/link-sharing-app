@@ -252,26 +252,19 @@ let view model dispatch onBackToEditor =
       ]
       match model.ShareState with
       | Copied ->
-        Html.div [
-          prop.className
-            "fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white rounded-[var(--radius-md)] px-4 py-3 shadow-[var(--shadow-lg)] flex items-center gap-3"
-          prop.children [
-            Html.img [
-              prop.src "/images/icon-link-copied-to-clipboard.svg"
-              prop.alt "Copied"
-            ]
-            Html.p [
-              prop.className "text-preset-4 uppercase tracking-[0.03em]"
-              prop.text "The link has been copied to your clipboard!"
-            ]
-          ]
-        ]
+        Ui.Toast.view {
+          Message = "The link has been copied to your clipboard!"
+          Variant = Ui.Toast.Variant.Success
+          Icon = Some Ui.Icon.Name.LinkCopied
+          Uppercase = true
+        }
       | CopyFailed ->
-        Html.div [
-          prop.className
-            "fixed bottom-6 left-1/2 -translate-x-1/2 bg-red-550 text-white rounded-[var(--radius-md)] px-4 py-3 shadow-[var(--shadow-lg)]"
-          prop.text "Could not copy link. Please try again."
-        ]
+        Ui.Toast.view {
+          Message = "Could not copy link. Please try again."
+          Variant = Ui.Toast.Variant.Error
+          Icon = None
+          Uppercase = false
+        }
       | Idle -> Html.none
     ]
   ]
