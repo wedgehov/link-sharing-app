@@ -8,13 +8,13 @@ type Props = {Links: Link list; AvatarUrl: string option}
 
 let view (p: Props) =
   Html.div [
-    // Container sized to Figma mockup width (W 307 x H 631)
-    prop.className "relative w-[307px]"
+    // Match the SVG's native geometry exactly to avoid sub-pixel drift.
+    prop.className "relative w-[308px] h-[632px]"
     prop.children [
       Html.img [
         prop.src "/images/illustration-phone-mockup.svg"
         prop.alt "Phone preview"
-        prop.className "w-full h-auto select-none"
+        prop.className "absolute inset-0 w-full h-full select-none"
       ]
 
       // Avatar overlay positioned over the phone mockup's circular area
@@ -26,19 +26,20 @@ let view (p: Props) =
            prop.alt "Avatar"
            prop.className
              // Centered horizontally; adjust top to align with the mockup circle.
-             "absolute left-1/2 -translate-x-1/2 top-[63.5px] w-24 h-24 rounded-full object-cover shadow-[var(--shadow-sm)] pointer-events-none select-none z-10"
+             "absolute left-1/2 -translate-x-1/2 top-16 w-24 h-24 rounded-full object-cover shadow-[var(--shadow-sm)] pointer-events-none select-none z-10"
          ]
        | _ ->
          // Fallback placeholder if no avatar
          Html.div [
-           prop.className "absolute left-1/2 -translate-x-1/2 top-[63.5px] w-24 h-24 rounded-full bg-gray-200 z-10"
+           prop.className "absolute left-1/2 -translate-x-1/2 top-16 w-24 h-24 rounded-full bg-gray-200 z-10"
          ])
 
       // Overlay stack of platform links positioned over the mock phone cards
       Html.div [
         prop.className (
-          // Figma: first link starts exactly 277.5px from the very top at width 307
-          "absolute left-1/2 -translate-x-1/2 top-[277.5px] w-[230px] flex flex-col gap-[20px]"
+          // Exact slot geometry from illustration-phone-mockup.svg:
+          // x=35, y=278, width=237, height=44, vertical step=64.
+          "absolute left-[35px] top-[278px] w-[237px] flex flex-col gap-[20px]"
         )
         prop.children [
           // Show up to five links and then fill missing slots with placeholders.
