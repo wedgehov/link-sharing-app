@@ -11,8 +11,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Entity.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260309202815_EnforceRequiredUserFieldsAndRenamePublicGuid")]
-    partial class EnforceRequiredUserFieldsAndRenamePublicGuid
+    [Migration("20260310183239_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -94,6 +94,9 @@ namespace Entity.Migrations
                         .HasColumnName("public_guid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
 
                     b.HasIndex("PublicGuid")
                         .IsUnique();

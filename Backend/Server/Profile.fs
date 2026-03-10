@@ -36,10 +36,19 @@ let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
 
         user.FirstName <- profileDto.FirstName
         user.LastName <- profileDto.LastName
-        user.Email <-
+        let requestedEmail =
             profileDto.DisplayEmail
+            |> Option.map (fun email -> email.Trim())
             |> Option.filter (fun email -> not (String.IsNullOrWhiteSpace email))
             |> Option.defaultValue user.Email
+
+        let! emailInUseByAnotherUser =
+            db.Users.AsNoTracking().AnyAsync(fun u -> u.Id <> userId && u.Email = requestedEmail)
+            |> TaskResult.ofTask
+
+        do! emailInUseByAnotherUser |> Result.requireFalse Conflict |> TaskResult.ofResult
+
+        user.Email <- requestedEmail
         user.AvatarUrl <- normalizeOptionalText profileDto.AvatarUrl
 
         if String.IsNullOrWhiteSpace user.PublicGuid then
