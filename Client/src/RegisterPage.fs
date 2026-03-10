@@ -1,10 +1,10 @@
 module RegisterPage
 
+open System
 open Elmish
 open Feliz
 open Shared.Api
 open Routing
-open Ui
 
 // Model
 type Model = {
@@ -12,7 +12,10 @@ type Model = {
   Password: string
   ConfirmPassword: string
   IsLoading: bool
-  Error: string option
+  FormError: string option
+  EmailError: string option
+  PasswordError: string option
+  ConfirmPasswordError: string option
 }
 
 let init () : Model = {
@@ -20,7 +23,10 @@ let init () : Model = {
   Password = ""
   ConfirmPassword = ""
   IsLoading = false
-  Error = None
+  FormError = None
+  EmailError = None
+  PasswordError = None
+  ConfirmPasswordError = None
 }
 
 // Msg
@@ -34,41 +40,179 @@ type Msg =
 // Update
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   match msg with
-  | SetEmail email -> {model with Email = email}, Cmd.none
-  | SetPassword pass -> {model with Password = pass}, Cmd.none
-  | SetConfirmPassword pass -> {model with ConfirmPassword = pass}, Cmd.none
+  | SetEmail email -> {model with Email = email; FormError = None; EmailError = None}, Cmd.none
+  | SetPassword pass -> {model with Password = pass; FormError = None; PasswordError = None}, Cmd.none
+  | SetConfirmPassword pass ->
+    {model with ConfirmPassword = pass; FormError = None; ConfirmPasswordError = None}, Cmd.none
   | AttemptRegister ->
-    if model.Password <> model.ConfirmPassword then
-      {model with Error = Some "Passwords do not match"}, Cmd.none
-    else
-      {model with IsLoading = true; Error = None},
+    let emailError =
+      if String.IsNullOrWhiteSpace model.Email then
+        Some "Can't be empty"
+      else
+        None
+    let passwordError =
+      if
+        String.IsNullOrWhiteSpace model.Password
+        || model.Password.Length < 8
+      then
+        Some "Please check again"
+      else
+        None
+    let confirmPasswordError =
+      if String.IsNullOrWhiteSpace model.ConfirmPassword then
+        Some "Please check again"
+      elif model.Password <> model.ConfirmPassword then
+        Some "Please check again"
+      else
+        None
+
+    match emailError, passwordError, confirmPasswordError with
+    | None, None, None ->
+      {
+        model with
+            IsLoading = true
+            FormError = None
+            EmailError = None
+            PasswordError = None
+            ConfirmPasswordError = None
+      },
       Auth.register {Email = model.Email; Password = model.Password} RegisterResult
+    | _ ->
+      {
+        model with
+            IsLoading = false
+            FormError = None
+            EmailError = emailError
+            PasswordError = passwordError
+            ConfirmPasswordError = confirmPasswordError
+      },
+      Cmd.none
   | RegisterResult (Ok user) ->
     // This message should be bubbled up to the main update function
     // to navigate to the todos page and store the user.
     {model with IsLoading = false}, Cmd.none
-  | RegisterResult (Error err) -> {model with IsLoading = false; Error = Some (Auth.appErrorToMessage err)}, Cmd.none
+  | RegisterResult (Error err) ->
+    let message = Auth.appErrorToMessage err
+    let emailError =
+      match err with
+      | Conflict -> Some "Please check again"
+      | _ -> None
+    let formError =
+      match err with
+      | Conflict -> None
+      | _ -> Some message
+    {model with IsLoading = false; FormError = formError; EmailError = emailError}, Cmd.none
+
+type private FieldProps = {
+  Id: string
+  Label: string
+  Value: string
+  Placeholder: string
+  InputType: string
+  LeftIcon: Ui.Icon.Name
+  AutoFocus: bool
+  Error: string option
+  HelpText: string option
+  OnChange: string -> unit
+}
+
+let private fieldView (p: FieldProps) =
+  let hasError = p.Error |> Option.isSome
+  let borderClass =
+    if hasError then
+      "border-red-500"
+    else
+      "border-gray-200 focus:border-purple-600 focus:shadow-[0_0_32px_rgba(99,60,255,0.25)]"
+  let rightPadClass = if hasError then "md:pr-36" else ""
+
+  Html.div [
+    prop.className "flex flex-col gap-2 w-full"
+    prop.children [
+      Html.label [
+        prop.htmlFor p.Id
+        prop.className "text-preset-4 text-gray-900"
+        prop.text p.Label
+      ]
+      Html.div [
+        prop.className "relative"
+        prop.children [
+          Ui.Icon.view p.LeftIcon p.Label (Some "absolute left-4 top-1/2 -translate-y-1/2 size-4")
+          Html.input [
+            prop.id p.Id
+            prop.type' p.InputType
+            prop.value p.Value
+            prop.placeholder p.Placeholder
+            prop.autoFocus p.AutoFocus
+            prop.className (
+              String.concat " " [
+                "w-full h-14 rounded-[var(--radius-md)] bg-white border px-4 pl-11 text-preset-3-regular outline-none transition-all"
+                borderClass
+                rightPadClass
+              ]
+            )
+            prop.onChange p.OnChange
+          ]
+          match p.Error with
+          | Some e ->
+            Html.span [
+              prop.className
+                "hidden md:block absolute right-4 top-1/2 -translate-y-1/2 text-preset-4 text-red-500 text-right"
+              prop.text e
+            ]
+          | None -> Html.none
+        ]
+      ]
+      match p.Error with
+      | Some e ->
+        Html.p [
+          prop.className "block md:hidden text-preset-4 text-red-500 text-right"
+          prop.text e
+        ]
+      | None ->
+        match p.HelpText with
+        | Some help ->
+          Html.p [
+            prop.className "text-preset-4 text-gray-500"
+            prop.text help
+          ]
+        | None -> Html.none
+    ]
+  ]
 
 // View
 let view (model: Model) (dispatch: Msg -> unit) =
-  Html.div [
-    prop.className "min-h-screen bg-gray-50"
+  Html.main [
+    prop.className "min-h-screen bg-white px-8 py-8 md:bg-gray-50 md:px-0 md:py-0 md:grid md:place-items-center"
     prop.children [
-      Html.main [
-        prop.className "px-6 md:px-0 md:max-w-xl mx-auto py-16"
+      Html.div [
+        prop.className "mx-auto w-full max-w-[311px] flex flex-col gap-16 md:w-[476px] md:max-w-none md:gap-12"
         prop.children [
           Html.div [
-            prop.className "flex justify-center items-center mb-8"
+            prop.className "h-10 w-[182.5px]"
             prop.children [
-              Html.h1 [
-                prop.className "text-preset-1"
-                prop.text "Create account"
+              Html.img [
+                prop.className "h-full w-full"
+                prop.src "/images/logo-devlinks-large.svg"
+                prop.alt "devlinks"
               ]
             ]
           ]
           Html.div [
-            prop.className "bg-white rounded-[var(--radius-lg)] shadow-[var(--shadow-md)] p-4"
+            prop.className "w-full flex flex-col gap-10 md:bg-white md:rounded-[var(--radius-lg)] md:p-10"
             prop.children [
+              Html.div [
+                prop.className "flex flex-col gap-2"
+                prop.children [
+                  Html.h1 [
+                    prop.className "text-preset-2 md:text-preset-1 text-gray-900"
+                    prop.text "Create account"
+                  ]
+                  Html.p [
+                    prop.className "text-preset-3-regular text-gray-500"
+                    prop.text "Let's get you started sharing your links!"
+                  ]
+                ]
+              ]
               Html.form [
                 prop.className "flex flex-col gap-6"
                 prop.onSubmit (fun ev ->
@@ -76,46 +220,46 @@ let view (model: Model) (dispatch: Msg -> unit) =
                   dispatch AttemptRegister
                 )
                 prop.children [
-                  Ui.TextField.view {
+                  fieldView {
                     Id = "email"
-                    Label = "Email Address"
+                    Label = "Email address"
                     Value = model.Email
-                    Placeholder = "Enter your email"
-                    HelpText = None
-                    Error = None
+                    Placeholder = "e.g. alex@email.com"
                     AutoFocus = true
                     InputType = "email"
-                    LeftIcon = Some Ui.Icon.Name.Email
+                    LeftIcon = Ui.Icon.Name.Email
+                    Error = model.EmailError
+                    HelpText = None
                     OnChange = (SetEmail >> dispatch)
                   }
-                  Ui.TextField.view {
+                  fieldView {
                     Id = "password"
-                    Label = "Create Password"
+                    Label = "Create password"
                     Value = model.Password
-                    Placeholder = "Enter your password"
-                    HelpText = None
-                    Error = None
+                    Placeholder = "At least 8 characters"
                     AutoFocus = false
                     InputType = "password"
-                    LeftIcon = Some Ui.Icon.Name.Password
+                    LeftIcon = Ui.Icon.Name.Password
+                    Error = model.PasswordError
+                    HelpText = None
                     OnChange = (SetPassword >> dispatch)
                   }
-                  Ui.TextField.view {
+                  fieldView {
                     Id = "confirm-password"
-                    Label = "Confirm Password"
+                    Label = "Confirm password"
                     Value = model.ConfirmPassword
-                    Placeholder = "Confirm your password"
-                    HelpText = None
-                    Error = None
+                    Placeholder = "At least 8 characters"
                     AutoFocus = false
                     InputType = "password"
-                    LeftIcon = Some Ui.Icon.Name.Password
+                    LeftIcon = Ui.Icon.Name.Password
+                    Error = model.ConfirmPasswordError
+                    HelpText = Some "Password must contain at least 8 characters"
                     OnChange = (SetConfirmPassword >> dispatch)
                   }
-                  match model.Error with
+                  match model.FormError with
                   | Some error ->
                     Html.p [
-                      prop.className "text-sm text-red-600"
+                      prop.className "text-preset-4 text-red-500 text-right"
                       prop.text error
                     ]
                   | None -> Html.none
@@ -128,17 +272,21 @@ let view (model: Model) (dispatch: Msg -> unit) =
                     onClick = (fun () -> ())
                     text =
                       if model.IsLoading then
-                        "Creating Account..."
+                        "Creating account..."
                       else
-                        "Create New Account"
+                        "Create new account"
                   |}
-                  Html.div [
-                    prop.className "text-center"
+                  Html.p [
+                    prop.className "text-center text-preset-3-regular text-gray-500"
                     prop.children [
+                      Html.span [
+                        prop.className "block md:inline"
+                        prop.text "Already have an account? "
+                      ]
                       Html.a [
-                        prop.className "text-blue-500 hover:text-blue-600 text-sm"
+                        prop.className "block md:inline text-purple-600 hover:text-purple-500"
                         prop.href (href LoginPage)
-                        prop.text "Already have an account? Login"
+                        prop.text "Login"
                       ]
                     ]
                   ]

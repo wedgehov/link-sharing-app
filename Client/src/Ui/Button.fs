@@ -20,7 +20,8 @@ let private classes (variant: Variant) (size: Size) (disabled: bool) (active: bo
   let v =
     match variant, active with
     | Variant.Primary, true -> "bg-purple-300 text-white shadow-[0_0_32px_rgba(99,60,255,0.25)]"
-    | Variant.Primary, false -> "bg-purple-600 text-white hover:bg-purple-300"
+    | Variant.Primary, false ->
+      "bg-purple-600 text-white hover:bg-purple-300 hover:shadow-[0_0_32px_rgba(99,60,255,0.25)]"
     | Variant.Secondary, true -> "bg-[#efebff] text-purple-600 border border-purple-600"
     | Variant.Secondary, false -> "bg-transparent text-purple-600 border border-purple-600 hover:bg-[#efebff]"
   let s =
