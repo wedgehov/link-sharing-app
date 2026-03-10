@@ -32,7 +32,7 @@ let view (p: Props) =
     prop.children [
       Html.div [
         prop.className
-          "relative shrink-0 size-[150px] md:size-[193px] rounded-[var(--radius-lg)] overflow-hidden bg-[#efebff]"
+          "group relative shrink-0 size-[150px] md:size-[193px] rounded-[var(--radius-lg)] overflow-hidden bg-[#efebff]"
         prop.children [
           match imageUrl with
           | Some url when not (String.IsNullOrWhiteSpace url) ->
@@ -44,7 +44,7 @@ let view (p: Props) =
             Html.label [
               prop.htmlFor inputId
               prop.className
-                "absolute inset-0 bg-gray-900/55 text-white text-preset-3-semibold flex items-center justify-center text-center px-4 cursor-pointer"
+                "absolute inset-0 bg-gray-900/55 text-white text-preset-3-semibold flex items-center justify-center text-center px-4 cursor-pointer opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
               prop.text "Change Image"
             ]
           | _ ->
