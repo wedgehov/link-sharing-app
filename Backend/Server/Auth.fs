@@ -28,6 +28,13 @@ let private tryParseInt (value: string) =
     | true, parsed -> Some parsed
     | false, _ -> None
 
+let private hasAdminRoleClaim (user: ClaimsPrincipal) =
+    user.Claims
+    |> Seq.exists (fun claim ->
+        claim.Type = ClaimTypes.Role
+        && String.Equals(claim.Value, "Admin", StringComparison.OrdinalIgnoreCase)
+    )
+
 let requireUser
     (ctx: HttpContext)
     (operation: int -> Async<Result<'ok, AppError>>)
@@ -52,12 +59,19 @@ let requireAuthorization
     <| fun userId ->
         asyncResult {
             do!
-                userId = resourceOwnerId
+                (userId = resourceOwnerId || hasAdminRoleClaim ctx.User)
                 |> Result.requireTrue Unauthorized
                 |> AsyncResult.ofResult
 
-            return! operation userId
+            // Always continue with the requested resource owner id.
+            // This allows admins to operate on the viewed user, not on themselves.
+            return! operation resourceOwnerId
         }
+
+let private toSharedRole (role: Entity.UserRole) : UserRole =
+    match role with
+    | Entity.UserRole.Admin -> UserRole.Admin
+    | _ -> UserRole.Standard
 
 let private toSharedUser (user: Entity.User) : User = {
     Id = user.Id
@@ -67,16 +81,21 @@ let private toSharedUser (user: Entity.User) : User = {
             ""
         else
             user.PublicGuid
+    Role = toSharedRole user.Role
 }
 
-let private createPrincipal (email: string) (userId: int) =
-    let claims = [ Claim(ClaimTypes.Name, email); Claim("UserId", userId.ToString()) ]
+let private createPrincipal (user: Entity.User) =
+    let claims = [
+        Claim(ClaimTypes.Name, user.Email)
+        Claim("UserId", user.Id.ToString())
+        Claim(ClaimTypes.Role, user.Role.ToString())
+    ]
     let identity =
         ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme)
     ClaimsPrincipal(identity)
 
 let private signInUser (ctx: HttpContext) (user: Entity.User) =
-    let principal = createPrincipal user.Email user.Id
+    let principal = createPrincipal user
     ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal)
     |> Async.AwaitTask
     |> AsyncResult.ofAsync

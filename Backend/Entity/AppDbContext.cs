@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     {
         modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         modelBuilder.Entity<User>().HasIndex(u => u.PublicGuid).IsUnique();
+        modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue(UserRole.Standard);
 
         modelBuilder
             .Entity<Link>()

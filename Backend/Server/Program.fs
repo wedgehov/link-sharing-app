@@ -52,8 +52,9 @@ let seedDevelopmentData (db: Entity.AppDbContext) =
         // This function is idempotent. It won't fail if the user already exists.
         let email = "test@example.com"
         let! existingUser = db.Users.FirstOrDefaultAsync(fun u -> u.Email = email)
-        if existingUser = null then
-            let logger = db.GetService<ILogger<Entity.AppDbContext>>()
+        let logger = db.GetService<ILogger<Entity.AppDbContext>>()
+        match Option.ofObj existingUser with
+        | None ->
             logger.LogInformation("Seeding development user '{Email}'", email)
             // Password is "secret123"
             let passwordHash = BCrypt.HashPassword("secret123")
@@ -61,9 +62,16 @@ let seedDevelopmentData (db: Entity.AppDbContext) =
             devUser.Email <- email
             devUser.PasswordHash <- passwordHash
             devUser.PublicGuid <- Guid.NewGuid().ToString("D")
+            devUser.Role <- UserRole.Admin
             db.Users.Add(devUser) |> ignore
             let! _ = db.SaveChangesAsync()
             ()
+        | Some existingUser when existingUser.Role <> UserRole.Admin ->
+            logger.LogInformation("Updating development user '{Email}' to admin role", email)
+            existingUser.Role <- UserRole.Admin
+            let! _ = db.SaveChangesAsync()
+            ()
+        | Some _ -> ()
     }
 
 // Profile/Links data logic moved to Profile.fs and Links.fs

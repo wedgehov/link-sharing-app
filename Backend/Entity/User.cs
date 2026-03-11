@@ -4,6 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Entity;
 
+public enum UserRole
+{
+    Standard = 0,
+    Admin = 1
+}
+
 [Table("users")]
 public class User
 {
@@ -31,4 +37,8 @@ public class User
     [Required]
     [Column("public_guid")]
     public string PublicGuid { get; set; } = Guid.NewGuid().ToString("D");
+
+    [Required]
+    [Column("role")]
+    public UserRole Role { get; set; } = UserRole.Standard;
 }

@@ -10,10 +10,16 @@ type AppError =
     | ValidationError of string
     | Unexpected of string
 
+[<RequireQualifiedAccess>]
+type UserRole =
+    | Standard
+    | Admin
+
 type User = {
     Id: int
     Email: string
     PublicId: string
+    Role: UserRole
 }
 
 type LoginRequest = { Email: string; Password: string }
