@@ -29,9 +29,20 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=linksharing;Username=app;Password=secret
       - ASPNETCORE_URLS=http://+:8080 # Tell ASP.NET Core to listen on the HTTP port
+      - BlobStorage__ConnectionString=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - BlobStorage__ContainerName=avatars
     depends_on:
       db:
         condition: service_healthy
+      azurite:
+        condition: service_started
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: linksharing_azurite
+    restart: always
+    ports:
+      - "10000:10000"
 
 volumes:
   postgres_data:

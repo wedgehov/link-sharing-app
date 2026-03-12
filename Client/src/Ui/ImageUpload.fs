@@ -4,7 +4,12 @@ open System
 open Feliz
 open Browser.Types
 
-type Props = {ImageUrl: string option; OnSelected: File -> unit}
+type Props = {
+  ImageUrl: string option
+  OnSelected: File -> unit
+  IsUploading: bool
+  UploadProgress: int option
+}
 
 let private fileInput (onSelected: File -> unit) (inputId: string) =
   Html.input [
@@ -34,8 +39,29 @@ let view (p: Props) =
         prop.className
           "group relative shrink-0 size-[150px] md:size-[193px] rounded-[var(--radius-lg)] overflow-hidden bg-[#efebff]"
         prop.children [
-          match imageUrl with
-          | Some url when not (String.IsNullOrWhiteSpace url) ->
+          match imageUrl, p.IsUploading with
+          | _, true ->
+            Html.div [
+              prop.className "absolute inset-0 bg-gray-900/55 flex flex-col items-center justify-center gap-2"
+              prop.children [
+                Html.div [
+                  prop.className "w-3/4 h-2 bg-gray-200 rounded-full overflow-hidden"
+                  prop.children [
+                    Html.div [
+                      prop.className "h-full bg-purple-600 transition-all duration-300"
+                      prop.style [
+                        style.width (length.perc (defaultArg p.UploadProgress 0))
+                      ]
+                    ]
+                  ]
+                ]
+                Html.span [
+                  prop.className "text-white text-preset-4"
+                  prop.text $"Uploading... {defaultArg p.UploadProgress 0}%%"
+                ]
+              ]
+            ]
+          | Some url, false when not (String.IsNullOrWhiteSpace url) ->
             Html.img [
               prop.src url
               prop.alt "Avatar preview"

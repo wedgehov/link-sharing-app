@@ -3,6 +3,7 @@ module ProfileEditorPage
 open System
 open Browser.Types
 open Fable.Core
+open Fable.Core.JsInterop
 open Feliz
 open Elmish
 open Shared.SharedModels
@@ -17,6 +18,8 @@ type ProfileForm = {
   DisplayEmail: string
   DisplayEmailError: string option
   AvatarUrl: string
+  IsUploadingAvatar: bool
+  AvatarUploadProgress: int option
   LastSavedSnapshot: ProfileSnapshot
   IsSaving: bool
   Error: string option
@@ -43,8 +46,10 @@ type Msg =
   | LoadLinks
   | LinksLoaded of Result<Link list, AppError>
   | SelectAvatarFile of File
-  | AvatarFileLoaded of string
-  | AvatarFileLoadFailed
+  | AvatarUploadStarted
+  | AvatarUploadProgress of int
+  | AvatarUploaded of string
+  | AvatarUploadFailed of string
   | SetFirstName of string
   | SetLastName of string
   | SetDisplayEmail of string
@@ -52,8 +57,42 @@ type Msg =
   | SaveResult of Result<unit, AppError>
   | ClearSaveToast
 
-[<Emit("new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error || new Error('Could not read file')); reader.readAsDataURL($0); })")>]
-let private readFileAsDataUrl (_file: File) : JS.Promise<string> = jsNative
+[<Emit("new XMLHttpRequest()")>]
+let private createXmlHttpRequest () : XMLHttpRequest = jsNative
+
+[<Emit("new FormData()")>]
+let private createFormData () : FormData = jsNative
+
+let uploadAvatarCmd (userId: int) (file: File) =
+  Cmd.ofEffect (fun dispatch ->
+    dispatch AvatarUploadStarted
+
+    let xhr = createXmlHttpRequest ()
+    let xhrDynamic = xhr :> obj
+    xhr.``open`` ("POST", $"/api/profile/{userId}/avatar", true)
+    xhr.withCredentials <- true // needed for auth cookie if cross-origin
+
+    xhrDynamic?upload?onprogress <-
+      fun ev ->
+        if ev?lengthComputable then
+          let pct = int (Math.Round (((ev?loaded) / (ev?total)) * 100.0))
+          dispatch (AvatarUploadProgress pct)
+
+    xhrDynamic?onload <-
+      fun _ ->
+        if xhr.status >= 200 && xhr.status < 300 then
+          let data = JS.JSON.parse (xhr.responseText)
+          let url: string = data?url
+          dispatch (AvatarUploaded url)
+        else
+          dispatch (AvatarUploadFailed $"Upload failed ({xhr.status})")
+
+    xhrDynamic?onerror <- fun _ -> dispatch (AvatarUploadFailed "Network error during upload")
+
+    let fd = createFormData ()
+    fd.append ("avatar", file, file.name)
+    xhr.send (fd)
+  )
 
 let private profileSnapshot
   (firstName: string)
@@ -87,6 +126,8 @@ let private toForm (p: UserProfile) : ProfileForm =
     DisplayEmail = initialEmail
     DisplayEmailError = None
     AvatarUrl = initialAvatar
+    IsUploadingAvatar = false
+    AvatarUploadProgress = None
     LastSavedSnapshot = profileSnapshot initialFirstName initialLastName initialEmail initialAvatar
     IsSaving = false
     Error = None
@@ -138,17 +179,53 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | LinksLoaded (Result.Error _err), _ -> model, Cmd.none
 
   | SelectAvatarFile file, Loaded form ->
-    let loadingForm = {form with Error = None; Saved = false}
-    {model with State = Loaded loadingForm},
-    Cmd.OfPromise.either readFileAsDataUrl file AvatarFileLoaded (fun _ -> AvatarFileLoadFailed)
+    let loadingForm = {
+      form with
+          Error = None
+          Saved = false
+          IsUploadingAvatar = true
+          AvatarUploadProgress = Some 0
+    }
+    {model with State = Loaded loadingForm}, uploadAvatarCmd model.UserId file
 
-  | AvatarFileLoaded avatarDataUrl, Loaded form ->
-    {model with State = Loaded {form with AvatarUrl = avatarDataUrl; Saved = false; Error = None}}, Cmd.none
+  | AvatarUploadStarted, Loaded form ->
+    {model with State = Loaded {form with IsUploadingAvatar = true; AvatarUploadProgress = Some 0; Error = None}},
+    Cmd.none
 
-  | AvatarFileLoadFailed, Loaded form ->
+  | AvatarUploadProgress pct, Loaded form ->
+    let bounded = max 0 (min 100 pct)
+    let nextPct =
+      form.AvatarUploadProgress
+      |> Option.map (fun prev -> max prev bounded)
+      |> Option.defaultValue bounded
+    {model with State = Loaded {form with AvatarUploadProgress = Some nextPct}}, Cmd.none
+
+  | AvatarUploaded avatarUrl, Loaded form ->
     {
       model with
-          State = Loaded {form with Error = Some "Could not read image file. Please try another image."; Saved = false}
+          State =
+            Loaded {
+              form with
+                  AvatarUrl = avatarUrl
+                  IsUploadingAvatar = false
+                  AvatarUploadProgress = Some 100
+                  Saved = false
+                  Error = None
+            }
+    },
+    Cmd.none
+
+  | AvatarUploadFailed err, Loaded form ->
+    {
+      model with
+          State =
+            Loaded {
+              form with
+                  Error = Some err
+                  IsUploadingAvatar = false
+                  AvatarUploadProgress = None
+                  Saved = false
+            }
     },
     Cmd.none
 
@@ -401,7 +478,12 @@ let view (model: Model) (dispatch: Msg -> unit) =
                                   prop.className "w-full text-preset-3-regular text-gray-500 md:w-[240px] md:shrink-0"
                                   prop.text "Profile picture"
                                 ]
-                                Ui.ImageUpload.view {ImageUrl = avatarOpt; OnSelected = (SelectAvatarFile >> dispatch)}
+                                Ui.ImageUpload.view {
+                                  ImageUrl = avatarOpt
+                                  OnSelected = (SelectAvatarFile >> dispatch)
+                                  IsUploading = form.IsUploadingAvatar
+                                  UploadProgress = form.AvatarUploadProgress
+                                }
                               ]
                             ]
                           ]

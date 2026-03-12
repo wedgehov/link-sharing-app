@@ -12,12 +12,16 @@
     <Compile Include="ErrorHandling.fs" />
     <Compile Include="Mapping.fs" />
     <Compile Include="Auth.fs" />
+    <Compile Include="AvatarStorage.fs" />
+    <Compile Include="AvatarUpload.fs" />
     <Compile Include="Profile.fs" />
     <Compile Include="Links.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.19.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Fable.Remoting.Giraffe" Version="5.24.0" />
     <PackageReference Include="Fable.Remoting.Server" Version="5.42.0" />

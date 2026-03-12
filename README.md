@@ -1,27 +1,20 @@
 # Frontend Mentor - Link-sharing app solution
 
-This is a full-stack solution to the [Link-sharing app challenge on Frontend Mentor](https://www.frontendmentor.io/challenges/linksharing-app-Fbt7yweGsT).
-
-This project implements a complete link-sharing application with a modern, end-to-end F# stack, containerized with Docker, and configured with a reproducible Nix development environment. It aims to follow common best practices for development workflows and testing, and can be a useful starting point.
+This is a full-stack solution to the [Link-sharing app challenge on Frontend Mentor](https://www.frontendmentor.io/challenges/linksharing-app-Fbt7yweGsT). Frontend Mentor challenges help you improve your coding skills by building realistic projects.
 
 ## Table of contents
 
 - [Overview](#overview)
   - [The challenge](#the-challenge)
-  - [Screenshot](#screenshot)
   - [Links](#links)
-- [My Process & Built With](#my-process--built-with)
-- [Deployment & GitOps](#deployment--gitops)
-- [Getting Started: The Development Environment](#getting-started-the-development-environment)
-  - [Prerequisites](#prerequisites)
-  - [Running Locally](#running-locally)
-- [Development Workflow & Architecture](#development-workflow--architecture)
-  - [Core Philosophy: Contract-First Development](#core-philosophy-contract-first-development)
-  - [Development Scripts](#development-scripts)
-  - [Public Profile Slugs](#public-profile-slugs)
-  - [The Testing Strategy (TODO)](#the-testing-strategy-todo)
-- [Database Migrations](#database-migrations)
-- [References](#references)
+- [My process](#my-process)
+  - [Built with](#built-with)
+  - [What I learned](#what-i-learned)
+  - [Continued development](#continued-development)
+- [Getting started](#getting-started)
+- [Database migrations](#database-migrations)
+- [Deployment](#deployment)
+- [Author](#author)
 
 ## Overview
 
@@ -29,183 +22,123 @@ This project implements a complete link-sharing application with a modern, end-t
 
 Users should be able to:
 
-- Create, read, update, and delete links.
-- See live previews of their links on a mobile mockup.
-- Drag and drop links to reorder them.
-- Add profile details like a profile picture, name, and email.
-- Receive form validations for invalid URLs or missing profile details.
-- Preview their devlinks profile and copy the link to their clipboard.
-- View the optimal layout for the app depending on their device's screen size.
-- See hover and focus states for all interactive elements.
-- **Bonus**: Create an account and log in (user authentication).
-- **Bonus**: Save all details to a database.
-
-### Screenshot
-
-![](./preview.jpg)
+- Create, read, update, delete links and see previews in the mobile mockup
+- Receive validations if the links form is submitted without a URL or with the wrong URL pattern for the platform
+- Drag and drop links to reorder them
+- Add profile details like profile picture, first name, last name, and email
+- Receive validations if the profile details form is saved with no first or last name
+- Preview their devlinks profile and copy the link to their clipboard
+- View the optimal layout for the interface depending on their device's screen size
+- See hover and focus states for all interactive elements on the page
+- **Bonus**: Save details to a database (full-stack app)
+- **Bonus**: Create an account and log in (user authentication)
+- **Bonus**: Role-based authorization with admin users who can view and edit any user's pages
 
 ### Links
 
-- **Live Site:** (TODO)
-- **Live Site (Main):** (TODO)
-- **Live Site (Test):** (TODO)
-- **Live Site (Production):** (TODO)
+- Solution URL: [https://github.com/wedgehov/link-sharing-app](https://github.com/wedgehov/link-sharing-app)
+- Live Site URL: [https://link-sharing-app-main.vhovet.com](https://link-sharing-app-main.vhovet.com)
 
-## My Process & Built With
+## My process
 
-This project is a full-stack application built entirely with F# and modern web technologies, emphasizing functional programming, type safety, and a robust development experience.
+### Built with
 
 **Frontend:**
 
-- **F#** with **Fable** to compile to JavaScript
-- **Elmish** for state management (The Elm Architecture)
-- **Feliz** for a declarative, type-safe React DSL
-- **Vite** for a fast development server and build tool
-- **Tailwind CSS** for utility-first styling
-- **React** as the underlying UI library
+- [F#](https://fsharp.org/) with [Fable](https://fable.io/) compiled to JavaScript
+- [Elmish](https://elmish.github.io/elmish/) for state management (The Elm Architecture)
+- [Feliz](https://zaid-ajaj.github.io/Feliz/) for a type-safe React DSL
+- [React 19](https://react.dev/)
+- [Vite 7](https://vitejs.dev/) with [vite-plugin-fable](https://github.com/nicoschi/vite-plugin-fable)
+- [Tailwind CSS 4](https://tailwindcss.com/) with custom design tokens
 
 **Backend:**
 
-- **F#** with **ASP.NET Core**
-- **Giraffe** as a lightweight, functional web framework
-- **Fable.Remoting** for typed RPC between client and server
-- **FsToolkit.ErrorHandling** for typed, composable domain workflows
-- **Entity Framework Core** for data access (Code-First)
-- **PostgreSQL** as the relational database
-- **Cookie-based Authentication** for session management
-- **BCrypt.Net-Next** for secure password hashing
+- [F#](https://fsharp.org/) with [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet) (.NET 9)
+- [Giraffe](https://github.com/giraffe-fsharp/Giraffe) as a functional web framework
+- [Fable.Remoting](https://zaid-ajaj.github.io/Fable.Remoting/) for typed RPC between client and server
+- [FsToolkit.ErrorHandling](https://github.com/demystifyfp/FsToolkit.ErrorHandling) for composable error workflows
+- [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) with PostgreSQL (Code-First)
+- Cookie-based authentication with role claims and [BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) for password hashing
 
-**DevOps & Tooling:**
+**DevOps:**
 
-- **Docker & Docker Compose** for containerization and local environment consistency.
-- **Nix** to create a reproducible development environment.
-- **Direnv** to automatically load the Nix shell.
-- **NPM** for frontend package management and scripts.
-- **GitHub Actions** for Continuous Integration: image build/push to GHCR (test jobs TODO).
+- Docker & Docker Compose
+- Nix for reproducible development environments
+- GitHub Actions for CI (image build/push to GHCR)
+- ArgoCD + Helm for GitOps deployment to Kubernetes
 
-## Deployment & GitOps
+### What I learned
 
-This repository contains the application source code. All deployment configuration, including Helm charts, environment-specific values, and Kubernetes manifests, is managed in a separate **GitOps repository**.
+This project was an exercise in building a complete, production-grade application with an end-to-end F# stack. A few highlights:
 
-- **GitOps Repository:** [https://github.com/wedgehov/gitops](https://github.com/wedgehov/gitops)
+**Contract-first development with Fable.Remoting.** The `Shared` project defines F# interfaces like `IProfileApi` and `ILinkApi` that serve as the single source of truth for both client and server. Fable.Remoting generates typed proxies from these, so there is no manual JSON serialization and domain errors (`AppError`) are shared discriminated unions that the client can pattern-match on directly.
 
-The deployment process follows a "Rendered Manifests" pattern, where Helm charts are pre-rendered into static YAML files. These files are the source of truth that ArgoCD uses to sync the application state to the Kubernetes cluster. This approach ensures that every change to the deployed application is version-controlled, auditable, and happens through a pull request in the `gitops` repository.
+**Elmish architecture at scale.** Each page is an isolated `Model`/`Msg`/`update`/`view` module, composed through a root `Program.fs` that handles routing, auth state, and inter-page coordination. Side effects like toast auto-dismiss timers and clipboard writes are modeled as Elmish commands, keeping the update functions pure.
 
-## Getting Started: The Development Environment
+**Role-based authorization.** The app supports `Standard` and `Admin` roles. The server-side `requireAuthorization` helper checks cookie claims and allows admins to operate on any user's resources. A key detail: when an admin edits another user's profile, operations (like email uniqueness checks) execute against the target user's id, not the admin's own id.
 
-This project uses Nix and Docker to provide a fully reproducible development environment.
+**Client-side route guards.** Rather than letting unauthorized API calls fail with 401s, the Elmish root intercepts private route transitions before any page loads. Unauthenticated users are redirected to login with a toast; authenticated users trying to access another user's page see an error toast and stay on their current page. Admins bypass this check entirely.
+
+### Continued development
+
+- Migrate profile image storage from inline base64/data URLs to Azure Blob Storage with server-mediated uploads
+- Add comprehensive test coverage (backend integration tests with Testcontainers, Elmish update unit tests, Playwright E2E tests)
+- Local Kubernetes development with Tilt for a production-like inner loop
+
+## Getting started
 
 ### Prerequisites
 
-1.  **Nix Package Manager:** Nix ensures that every developer uses the exact same versions of all tools (like the .NET SDK and Node.js). Follow the [official installation guide](https://nixos.org/download.html).
-2.  **Direnv:** A shell extension that automatically loads the Nix environment when you enter the project directory. Please see the [official documentation](https://direnv.net/docs/hook.html) for installation instructions.
-3.  **Docker & Docker Compose:** Required to run the complete application stack, including the PostgreSQL database. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+1. [Nix](https://nixos.org/download.html) with [Direnv](https://direnv.net/docs/hook.html) for reproducible tooling
+2. [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) for the database
 
-### Running Locally
+### Running locally
 
-1.  Clone the repository:
-    ```bash
-    git clone https://github.com/your-username/link-sharing-app.git
-    cd link-sharing-app
-    ```
-
-2.  Enable Direnv for the project:
-    This command approves the loading of the Nix shell defined in `.envrc`. You only need to do this once.
-    ```bash
-    direnv allow
-    ```
-    Your shell will now have the correct versions of `.NET`, `node`, `npm`, etc., available.
-
-3.  Run with Docker Compose:
-    ```bash
-    docker compose up --build
-    ```
-    Access:
-    -   **Frontend:** http://localhost:5173
-    -   **Backend (HTTP):** http://localhost:5200
-
-### Local Kubernetes Development with Tilt (TODO)
-
-For a more advanced development workflow that mirrors a production-like Kubernetes setup, a `Tiltfile` can be added. This enables a hybrid development environment:
-
-*   **Backend:** Runs in a pod on a shared development Kubernetes cluster with hot-reloading for code changes (syncing compiled DLLs without rebuilding images).
-*   **Frontend:** Runs as a local process on your machine using the Vite dev server for instant HMR.
-
-This setup provides a high-fidelity development environment that closely matches production while maintaining a fast inner loop.
-
-## Development Workflow & Architecture
-
-### Core Philosophy: Contract-First Development
-
-This project is built using a **Contract-First** approach. The `Shared` project defines the API contract (F# record types and interfaces) that acts as a source of truth for frontend-backend communication. This enables parallel development and reduces integration errors.
-
-The app now uses **Fable.Remoting** end-to-end for API communication, with strongly-typed `AppError` domain errors shared across server and client. This removes manual JSON parsing and keeps transport concerns out of the page-level update logic.
-
-### Development Scripts
-
-The client can be run in the following modes:
-
-| Script (`npm run <script>`) | Use Case |
-| :--- | :--- |
-| `dev` | Default local frontend development mode. |
-| `dev:authed` | Starts frontend with development auth state enabled. |
-| `build` | Creates a production frontend build. |
-| `preview` | Serves the built frontend for local verification. |
-
-The development auth mode works via the `VITE_START_AUTHENTICATED` environment variable in Vite [1].
-
-### Public Profile Slugs
-
-This app uses human-readable profile slugs for public preview URLs.
-
-- On profile creation (or when missing), the server generates a slug from first/last name, falling back to the email local-part or `user-<id>`.
-- Slugs are normalized (lowercase, diacritics removed), non-alphanumeric converted to `-`, and made unique by appending an incrementing suffix (`-2`, `-3`, ...).
-- Existing slugs stay stable on profile updates to avoid breaking links. If you need to support slug changes, add a redirect table and return `301` for old slugs (not implemented yet).
-- The header Preview link uses the current profile slug when available.
-
-Example URLs: `/#/preview/john-appleseed`, `/#/preview/john-appleseed-2`.
-
-### The Testing Strategy (TODO)
-
-*This section describes the testing plan, which is yet to be implemented.*
-
-The goal is a comprehensive suite covering the entire application stack, from pure business logic to browser-based end-to-end flows.
-
-**Backend Testing:**
-
--   **Unit Tests:** Will test business logic in `Backend/Server` in isolation using an in-memory database provider.
--   **Integration Tests:** Will verify API endpoints against a real PostgreSQL database spun up using Testcontainers.
-
-**Frontend Testing:**
-
--   **Unit Tests:** Will test the pure Elmish `update` functions to assert correct state transitions without rendering UI.
-
-**End-to-End (E2E) Testing:**
-
--   Tests will be written in F# using Playwright to simulate real user flows (login, creating links, updating profile) against a live, deployed `test` environment in the Kubernetes cluster.
-
-**How to Run Tests (TODO):**
-
-When implemented, all tests can be run from the root of the repository with:
 ```bash
-dotnet test
+git clone https://github.com/wedgehov/link-sharing-app.git
+cd link-sharing-app
+direnv allow
 ```
 
-## Database Migrations
+Start the database, backend, and frontend:
 
-This project uses EF Core for a **Code-First** approach to database management.
+```bash
+docker compose up -d db
+dotnet run --project Backend/Server/backend.fsproj
+cd Client && npm install && npm run dev
+```
 
--   **Creating Migrations:** When you change an entity model in `Backend/Entity`, create a new migration by running the following command from the repository root:
-    ```bash
-    dotnet ef migrations add YourMigrationName --project Backend/Entity/Entity.csproj --startup-project Backend/Server/backend.fsproj --output-dir Migrations
-    ```
--   **Applying Migrations:**
-    - Local (Docker Compose): The backend applies pending migrations automatically on startup (with retry) when running via `docker compose`.
-    - Manual (optional during development):
-      ```bash
-      dotnet ef database update --project Backend/Entity/Entity.csproj --startup-project Backend/Server/backend.fsproj
-      ```
+- Frontend: http://localhost:5173
+- Backend: http://localhost:5200
 
-## References
+Or run everything via Docker Compose:
 
-[1] Vite contributors, "Env Variables and Modes," *Vite*, [Online]. Available: https://vitejs.dev/guide/env-and-mode.html. [Accessed: Oct. 9, 2025].
+```bash
+docker compose up --build
+```
+
+- Unified app: http://localhost:5200
+
+A development seed user is created automatically in `Development` mode: `test@example.com` / `secret123` (Admin role).
+
+## Database migrations
+
+Migrations are generated via the EF Core CLI and never edited manually:
+
+```bash
+dotnet ef migrations add YourMigrationName \
+  --project Backend/Entity/Entity.csproj \
+  --startup-project Backend/Server/backend.fsproj \
+  --output-dir Migrations
+```
+
+The backend applies pending migrations automatically on startup with retry logic for Docker race conditions.
+
+## Deployment
+
+This repository contains application source code only. Deployment configuration (Helm charts, Kubernetes manifests) is managed in a separate [GitOps repository](https://github.com/wedgehov/gitops) using a rendered-manifests pattern synced by ArgoCD.
+
+## Author
+
+- Frontend Mentor - [@wedgehov](https://www.frontendmentor.io/profile/wedgehov)

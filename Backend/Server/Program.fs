@@ -97,6 +97,13 @@ let webApp: HttpHandler =
         routeStartsWith "/api/ILinkApi"
         >=> global.Auth.requiresAuthentication
         >=> global.Links.linksApiHandler
+        routef
+            "/api/profile/%i/avatar"
+            (fun userId ->
+                POST
+                >=> global.Auth.requiresAuthentication
+                >=> global.AvatarUpload.uploadAvatarHandler userId
+            )
         global.Links.publicApiHandler
         // Fallback for SPA routes so deep links resolve to index.html.
         fun next ctx ->
@@ -186,6 +193,11 @@ let main argv =
     |> ignore
 
     builder.Services.AddGiraffe() |> ignore
+    builder.Services.AddSingleton<
+        global.AvatarStorage.IAvatarStorage,
+        global.AvatarStorage.AzureBlobAvatarStorage
+     >()
+    |> ignore
 
     let app = builder.Build()
 

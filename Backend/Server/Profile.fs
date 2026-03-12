@@ -26,7 +26,12 @@ let getProfile (db: AppDbContext) (userId: int) =
     |> TaskResult.ofTask
     |> TaskResult.map Option.ofObj
 
-let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
+let saveProfile
+    (db: AppDbContext)
+    (storage: AvatarStorage.IAvatarStorage option)
+    (userId: int)
+    (profileDto: UserProfile)
+    =
     taskResult {
         let! user =
             db.Users.FirstOrDefaultAsync(fun u -> u.Id = userId)
@@ -49,12 +54,24 @@ let saveProfile (db: AppDbContext) (userId: int) (profileDto: UserProfile) =
         do! emailInUseByAnotherUser |> Result.requireFalse Conflict |> TaskResult.ofResult
 
         user.Email <- requestedEmail
-        user.AvatarUrl <- normalizeOptionalText profileDto.AvatarUrl
+
+        let oldAvatarUrl = if isNull user.AvatarUrl then "" else user.AvatarUrl
+        let newAvatarUrl = normalizeOptionalText profileDto.AvatarUrl
+        user.AvatarUrl <- newAvatarUrl
 
         if String.IsNullOrWhiteSpace user.PublicGuid then
             user.PublicGuid <- Guid.NewGuid().ToString("D")
 
         do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
+
+        match storage with
+        | Some s when
+            oldAvatarUrl <> (if isNull newAvatarUrl then "" else newAvatarUrl)
+            && not (String.IsNullOrWhiteSpace oldAvatarUrl)
+            ->
+            // Best effort delete in background
+            s.DeleteAvatarIfOwnedAsync(oldAvatarUrl) |> ignore
+        | _ -> ()
     }
 
 let private toSharedProfile (u: Entity.User) : UserProfile = {
@@ -81,7 +98,8 @@ let private getProfileByUserId (ctx: HttpContext) (userId: int) =
 let private saveProfileByUserId (ctx: HttpContext) (userId: int) (profileDto: UserProfile) =
     asyncResult {
         let db = ctx.GetService<AppDbContext>()
-        do! saveProfile db userId profileDto |> Async.AwaitTask
+        let storage = ctx.GetService<AvatarStorage.IAvatarStorage>()
+        do! saveProfile db (Some storage) userId profileDto |> Async.AwaitTask
     }
 
 let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
