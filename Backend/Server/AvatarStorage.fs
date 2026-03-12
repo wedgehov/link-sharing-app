@@ -23,16 +23,11 @@ type AzureBlobAvatarStorage(configuration: IConfiguration, logger: ILogger<Azure
         configuration.GetValue<string>("BlobStorage:ContainerName", "avatars")
 
     let containerClient =
+        let accountUrl = configuration.GetValue<string>("BlobStorage:AccountUrl")
         let connectionString =
             configuration.GetValue<string>("BlobStorage:ConnectionString")
-        if not (String.IsNullOrWhiteSpace(connectionString)) then
-            logger.LogInformation("Using connection string for Azure Blob Storage")
-            BlobContainerClient(connectionString, containerName)
-        else
-            let accountUrl = configuration.GetValue<string>("BlobStorage:AccountUrl")
-            if String.IsNullOrWhiteSpace(accountUrl) then
-                failwith
-                    "Neither BlobStorage:ConnectionString nor BlobStorage:AccountUrl is configured."
+
+        if not (String.IsNullOrWhiteSpace(accountUrl)) then
             let safeAccountUrl = Option.ofObj accountUrl |> Option.defaultValue ""
             logger.LogInformation(
                 "Using DefaultAzureCredential for Azure Blob Storage at {AccountUrl}",
@@ -42,6 +37,12 @@ type AzureBlobAvatarStorage(configuration: IConfiguration, logger: ILogger<Azure
                 Uri(safeAccountUrl.TrimEnd('/') + "/" + containerName),
                 DefaultAzureCredential()
             )
+        elif not (String.IsNullOrWhiteSpace(connectionString)) then
+            logger.LogInformation("Using connection string for Azure Blob Storage")
+            BlobContainerClient(connectionString, containerName)
+        else
+            failwith
+                "Neither BlobStorage:AccountUrl nor BlobStorage:ConnectionString is configured."
 
     // Ensure container exists on startup (best effort)
     do

@@ -9,11 +9,6 @@ open Microsoft.EntityFrameworkCore
 open Shared.SharedModels
 open Shared.Api
 
-let private normalizeOptionalText (value: string option) =
-    value
-    |> Option.filter (fun v -> not (String.IsNullOrWhiteSpace v))
-    |> Option.toObj
-
 let private textOrEmpty (value: string | null) = value |> Option.ofObj |> Option.defaultValue ""
 
 let private nonBlankOption (value: string | null) =
@@ -26,12 +21,7 @@ let getProfile (db: AppDbContext) (userId: int) =
     |> TaskResult.ofTask
     |> TaskResult.map Option.ofObj
 
-let saveProfile
-    (db: AppDbContext)
-    (storage: AvatarStorage.IAvatarStorage option)
-    (userId: int)
-    (profileDto: UserProfile)
-    =
+let saveProfile (db: AppDbContext) (userId: int) (profileDto: ProfileDetails) =
     taskResult {
         let! user =
             db.Users.FirstOrDefaultAsync(fun u -> u.Id = userId)
@@ -55,23 +45,10 @@ let saveProfile
 
         user.Email <- requestedEmail
 
-        let oldAvatarUrl = if isNull user.AvatarUrl then "" else user.AvatarUrl
-        let newAvatarUrl = normalizeOptionalText profileDto.AvatarUrl
-        user.AvatarUrl <- newAvatarUrl
-
         if String.IsNullOrWhiteSpace user.PublicGuid then
             user.PublicGuid <- Guid.NewGuid().ToString("D")
 
         do! db.SaveChangesAsync() |> TaskResult.ofTask |> TaskResult.ignore
-
-        match storage with
-        | Some s when
-            oldAvatarUrl <> (if isNull newAvatarUrl then "" else newAvatarUrl)
-            && not (String.IsNullOrWhiteSpace oldAvatarUrl)
-            ->
-            // Best effort delete in background
-            s.DeleteAvatarIfOwnedAsync(oldAvatarUrl) |> ignore
-        | _ -> ()
     }
 
 let private toSharedProfile (u: Entity.User) : UserProfile = {
@@ -95,11 +72,10 @@ let private getProfileByUserId (ctx: HttpContext) (userId: int) =
         return profile |> Option.map toSharedProfile |> Option.defaultValue emptyProfile
     }
 
-let private saveProfileByUserId (ctx: HttpContext) (userId: int) (profileDto: UserProfile) =
+let private saveProfileByUserId (ctx: HttpContext) (userId: int) (profileDto: ProfileDetails) =
     asyncResult {
         let db = ctx.GetService<AppDbContext>()
-        let storage = ctx.GetService<AvatarStorage.IAvatarStorage>() |> Option.ofObj
-        do! saveProfile db storage userId profileDto |> Async.AwaitTask
+        do! saveProfile db userId profileDto |> Async.AwaitTask
     }
 
 let profileApiImplementation (ctx: HttpContext) : IProfileApi = {

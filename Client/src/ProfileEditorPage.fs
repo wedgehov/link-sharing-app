@@ -26,12 +26,7 @@ type ProfileForm = {
   Saved: bool
 }
 
-and ProfileSnapshot = {
-  FirstName: string
-  LastName: string
-  DisplayEmail: string
-  AvatarUrl: string
-}
+and ProfileSnapshot = {FirstName: string; LastName: string; DisplayEmail: string}
 
 type State =
   | Loading
@@ -62,6 +57,9 @@ let private createXmlHttpRequest () : XMLHttpRequest = jsNative
 
 [<Emit("new FormData()")>]
 let private createFormData () : FormData = jsNative
+
+[<Emit("URL.createObjectURL($0)")>]
+let private createObjectUrl (_file: File) : string = jsNative
 
 let uploadAvatarCmd (userId: int) (file: File) =
   Cmd.ofEffect (fun dispatch ->
@@ -94,21 +92,14 @@ let uploadAvatarCmd (userId: int) (file: File) =
     xhr.send (fd)
   )
 
-let private profileSnapshot
-  (firstName: string)
-  (lastName: string)
-  (displayEmail: string)
-  (avatarUrl: string)
-  : ProfileSnapshot =
-  {
-    FirstName = firstName.Trim ()
-    LastName = lastName.Trim ()
-    DisplayEmail = displayEmail.Trim ()
-    AvatarUrl = avatarUrl
-  }
+let private profileSnapshot (firstName: string) (lastName: string) (displayEmail: string) : ProfileSnapshot = {
+  FirstName = firstName.Trim ()
+  LastName = lastName.Trim ()
+  DisplayEmail = displayEmail.Trim ()
+}
 
 let private profileSnapshotFromForm (f: ProfileForm) =
-  profileSnapshot f.FirstName f.LastName f.DisplayEmail f.AvatarUrl
+  profileSnapshot f.FirstName f.LastName f.DisplayEmail
 
 let private hasUnsavedChanges (f: ProfileForm) =
   profileSnapshotFromForm f <> f.LastSavedSnapshot
@@ -128,13 +119,13 @@ let private toForm (p: UserProfile) : ProfileForm =
     AvatarUrl = initialAvatar
     IsUploadingAvatar = false
     AvatarUploadProgress = None
-    LastSavedSnapshot = profileSnapshot initialFirstName initialLastName initialEmail initialAvatar
+    LastSavedSnapshot = profileSnapshot initialFirstName initialLastName initialEmail
     IsSaving = false
     Error = None
     Saved = false
   }
 
-let private toDto (f: ProfileForm) : UserProfile = {
+let private toDto (f: ProfileForm) : ProfileDetails = {
   FirstName = f.FirstName
   LastName = f.LastName
   DisplayEmail =
@@ -142,11 +133,6 @@ let private toDto (f: ProfileForm) : UserProfile = {
       None
     else
       Some f.DisplayEmail
-  AvatarUrl =
-    if String.IsNullOrWhiteSpace f.AvatarUrl then
-      None
-    else
-      Some f.AvatarUrl
 }
 
 let private clearSaveToastCmd =
@@ -179,10 +165,12 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
   | LinksLoaded (Result.Error _err), _ -> model, Cmd.none
 
   | SelectAvatarFile file, Loaded form ->
+    let previewUrl = createObjectUrl file
     let loadingForm = {
       form with
           Error = None
           Saved = false
+          AvatarUrl = previewUrl
           IsUploadingAvatar = true
           AvatarUploadProgress = Some 0
     }

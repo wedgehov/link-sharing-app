@@ -30,3 +30,10 @@ type UserProfile = {
     DisplayEmail: string option
     AvatarUrl: string option
 }
+
+[<CLIMutable>]
+type ProfileDetails = {
+    FirstName: string
+    LastName: string
+    DisplayEmail: string option
+}

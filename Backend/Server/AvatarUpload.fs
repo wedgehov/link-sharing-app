@@ -2,7 +2,9 @@ module AvatarUpload
 
 open System
 open System.IO
+open Entity
 open Microsoft.AspNetCore.Http
+open Microsoft.EntityFrameworkCore
 open Giraffe
 open Shared.Api
 open AvatarStorage
@@ -54,11 +56,22 @@ let uploadAvatarHandler (userId: int) : HttpHandler =
                                 |> Result.requireTrue (ValidationError "Only PNG/JPEG is allowed")
 
                             let storage = ctx.GetService<IAvatarStorage>()
+                            let db = ctx.GetService<AppDbContext>()
+                            let! maybeUser =
+                                db.Users.FirstOrDefaultAsync(fun u -> u.Id = authorizedUserId)
+                                |> Async.AwaitTask
+                                |> AsyncResult.ofAsync
+                            let! user =
+                                maybeUser
+                                |> Option.ofObj
+                                |> Result.requireSome Unauthorized
+                                |> AsyncResult.ofResult
+
+                            let oldAvatarUrl = user.AvatarUrl |> Option.ofObj
                             use stream = file.OpenReadStream()
                             let extension = getExtension file.ContentType
 
-                            // UploadAvatarAsync: Task<Result<string, AppError>>
-                            return!
+                            let! uploadedUrl =
                                 storage.UploadAvatarAsync(
                                     authorizedUserId,
                                     stream,
@@ -66,6 +79,23 @@ let uploadAvatarHandler (userId: int) : HttpHandler =
                                     extension
                                 )
                                 |> Async.AwaitTask
+
+                            user.AvatarUrl <- uploadedUrl
+                            do!
+                                db.SaveChangesAsync()
+                                |> Async.AwaitTask
+                                |> AsyncResult.ofAsync
+                                |> AsyncResult.ignore
+
+                            match oldAvatarUrl with
+                            | Some old when old <> uploadedUrl ->
+                                do!
+                                    storage.DeleteAvatarIfOwnedAsync(old)
+                                    |> Async.AwaitTask
+                                    |> AsyncResult.ofAsync
+                            | _ -> ()
+
+                            return uploadedUrl
                         }
                     )
 

@@ -35,7 +35,7 @@ type IAuthApi = {
 
 type IProfileApi = {
     GetProfile: int -> Async<Result<UserProfile, AppError>>
-    SaveProfile: int -> UserProfile -> Async<Result<unit, AppError>>
+    SaveProfile: int -> ProfileDetails -> Async<Result<unit, AppError>>
 }
 
 type ILinkApi = {
