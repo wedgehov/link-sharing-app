@@ -98,8 +98,8 @@ let private getProfileByUserId (ctx: HttpContext) (userId: int) =
 let private saveProfileByUserId (ctx: HttpContext) (userId: int) (profileDto: UserProfile) =
     asyncResult {
         let db = ctx.GetService<AppDbContext>()
-        let storage = ctx.GetService<AvatarStorage.IAvatarStorage>()
-        do! saveProfile db (Some storage) userId profileDto |> Async.AwaitTask
+        let storage = ctx.GetService<AvatarStorage.IAvatarStorage>() |> Option.ofObj
+        do! saveProfile db storage userId profileDto |> Async.AwaitTask
     }
 
 let profileApiImplementation (ctx: HttpContext) : IProfileApi = {
