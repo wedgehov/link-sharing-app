@@ -23,7 +23,7 @@ let private getExtension (ct: string) =
 let uploadAvatarHandler (userId: int) : HttpHandler =
     fun next ctx ->
         task {
-            // Reuse your existing auth rule (admins can upload for viewed user)
+            // Upload is scoped to the requested user id, with auth/role checks enforced.
             let! result =
                 Auth.requireAuthorization
                     ctx

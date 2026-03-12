@@ -83,7 +83,12 @@ let uploadAvatarCmd (userId: int) (file: File) =
           let url: string = data?url
           dispatch (AvatarUploaded url)
         else
-          dispatch (AvatarUploadFailed $"Upload failed ({xhr.status})")
+          let responseText =
+            if String.IsNullOrWhiteSpace xhr.responseText then
+              ""
+            else
+              $": {xhr.responseText}"
+          dispatch (AvatarUploadFailed $"Upload failed ({xhr.status}){responseText}")
 
     xhrDynamic?onerror <- fun _ -> dispatch (AvatarUploadFailed "Network error during upload")
 
