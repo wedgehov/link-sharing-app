@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <!-- Optional but helpful so Ionide sees Fable-only code -->
     <DefineConstants>FABLE_COMPILER;TRACE;DEBUG</DefineConstants>
   </PropertyGroup>
@@ -33,16 +33,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Fable.Browser.Dom" Version="2.20.0" />
-    <PackageReference Include="Fable.Core" Version="4.0.0" />
+    <PackageReference Update="FSharp.Core" Version="10.0.103" />
+    <PackageReference Include="alex312.Feliz.Router" Version="4.99.0" />
+    <PackageReference Include="Fable.Browser.Dom" Version="2.18.1" />
+    <PackageReference Include="Fable.Core" Version="4.5.0" />
     <PackageReference Include="Fable.Elmish" Version="5.0.2" />
     <PackageReference Include="Fable.Elmish.Browser" Version="4.1.0" />
     <PackageReference Include="Fable.Elmish.React" Version="5.0.0" />
     <PackageReference Include="Fable.Remoting.Client" Version="7.35.0" />
     <PackageReference Include="Fable.React" Version="9.4.0" />
-    <PackageReference Include="Feliz" Version="2.9.0" />
-    <PackageReference Include="Feliz.CompilerPlugins" Version="2.2.0" PrivateAssets="all" />
-    <PackageReference Include="Feliz.Router" Version="4.0.0" />
+    <PackageReference Include="Feliz" Version="3.1.0" />
+    <PackageReference Include="Feliz.CompilerPlugins" Version="2.2.0" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="5.2.0" />
   </ItemGroup>
 

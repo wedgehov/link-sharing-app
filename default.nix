@@ -20,7 +20,7 @@ let
       version = builtins.readFile ./.version;
     in
     clean version;
-  dotnet-sdk = pkgs.dotnet-sdk_9;
+    dotnet-sdk = pkgs.dotnet-sdk_10;
 in
 rec {
   shell = pkgs.mkShell {

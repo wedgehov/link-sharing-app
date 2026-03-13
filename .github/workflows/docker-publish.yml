@@ -50,10 +50,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Setup .NET SDK 9.0
+      - name: Setup .NET SDK 10.0
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Cache NuGet packages
         uses: actions/cache@v4
