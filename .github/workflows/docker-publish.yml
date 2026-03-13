@@ -50,10 +50,15 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Setup .NET SDK
+      - name: Setup .NET SDK 9.0
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
+
+      - name: Setup .NET SDK 8.0 (Required by vite-plugin-fable)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
       - name: Publish project
         run: dotnet fsi build.fsx -p Bundle
