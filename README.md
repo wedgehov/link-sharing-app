@@ -50,12 +50,12 @@ Users should be able to:
 - [Elmish](https://elmish.github.io/elmish/) for state management (The Elm Architecture)
 - [Feliz](https://zaid-ajaj.github.io/Feliz/) for a type-safe React DSL
 - [React 19](https://react.dev/)
-- [Vite 7](https://vitejs.dev/) with [vite-plugin-fable](https://github.com/nicoschi/vite-plugin-fable)
+- [Vite 7](https://vitejs.dev/)
 - [Tailwind CSS 4](https://tailwindcss.com/) with custom design tokens
 
 **Backend:**
 
-- [F#](https://fsharp.org/) with [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet) (.NET 9)
+- [F#](https://fsharp.org/) with [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet) (.NET 10)
 - [Giraffe](https://github.com/giraffe-fsharp/Giraffe) as a functional web framework
 - [Fable.Remoting](https://zaid-ajaj.github.io/Fable.Remoting/) for typed RPC between client and server
 - [FsToolkit.ErrorHandling](https://github.com/demystifyfp/FsToolkit.ErrorHandling) for composable error workflows
@@ -91,7 +91,7 @@ This project was an exercise in building a complete, production-grade applicatio
 
 1. [Nix](https://nixos.org/download.html) with [Direnv](https://direnv.net/docs/hook.html) for reproducible tooling
 2. [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) for the database and local blob storage (Azurite)
-3. [.NET SDK 9.0](https://dotnet.microsoft.com/download)
+3. [.NET SDK 10.0](https://dotnet.microsoft.com/download)
 4. [Bun](https://bun.sh/) as the javascript runtime/package manager
 
 ### Running locally
