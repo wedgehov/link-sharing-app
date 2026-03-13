@@ -20,7 +20,6 @@ Backend/Entity/obj
 
 # Top-level caches (safety)
 node_modules
-dist
 .vite
 .fable
 

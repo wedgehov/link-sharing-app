@@ -38,7 +38,7 @@ pipeline "Bundle" {
         stage "Client" {
             workingDir "Client"
             // Compile F# first, then bundle with Vite (CI-friendly, no vite-plugin-fable daemon).
-            run "dotnet fable src/src.fsproj -s -o .build --run bunx --bun vite build"
+            run "dotnet fable src/src.fsproj -s -o .build --run bun run build"
         }
 
         stage "Server" {
@@ -67,7 +67,7 @@ pipeline "Watch" {
         stage "Client" {
             workingDir "Client"
             // Keep local dev aligned with production compilation path.
-            run "dotnet fable watch src/src.fsproj -s -o .build --run bunx --bun vite"
+            run "dotnet fable watch src/src.fsproj -s -o .build --run bun run dev"
         }
 
         stage "Server" {
