@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
     <Compile Include="SharedModels.fs" />
     <Compile Include="Api.fs" />
   </ItemGroup>
