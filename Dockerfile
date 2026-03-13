@@ -6,4 +6,4 @@ WORKDIR /app
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
 
-CMD dotnet backend.dll
+CMD ["dotnet", "backend.dll"]

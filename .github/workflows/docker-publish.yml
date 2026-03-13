@@ -55,6 +55,22 @@ jobs:
         with:
           dotnet-version: "9.0.x"
 
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.fsproj', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('Client/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Publish project
         run: dotnet fsi build.fsx -p Bundle
 
