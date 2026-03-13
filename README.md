@@ -33,6 +33,7 @@ Users should be able to:
 - **Bonus**: Save details to a database (full-stack app)
 - **Bonus**: Create an account and log in (user authentication)
 - **Bonus**: Role-based authorization with admin users who can view and edit any user's pages
+- **Bonus**: Profile images are uploaded to Azure Blob Storage via a dedicated multipart endpoint, with old image cleanup and fallback to local Azurite for development.
 
 ### Links
 
@@ -58,31 +59,29 @@ Users should be able to:
 - [Giraffe](https://github.com/giraffe-fsharp/Giraffe) as a functional web framework
 - [Fable.Remoting](https://zaid-ajaj.github.io/Fable.Remoting/) for typed RPC between client and server
 - [FsToolkit.ErrorHandling](https://github.com/demystifyfp/FsToolkit.ErrorHandling) for composable error workflows
+- [Azure.Storage.Blobs](https://learn.microsoft.com/en-us/azure/storage/blobs/) for profile image storage
 - [Entity Framework Core](https://learn.microsoft.com/en-us/ef/core/) with PostgreSQL (Code-First)
 - Cookie-based authentication with role claims and [BCrypt.Net-Next](https://github.com/BcryptNet/bcrypt.net) for password hashing
 
 **DevOps:**
 
-- Docker & Docker Compose
+- Docker & Docker Compose (for infrastructure)
+- Fun.Build (F# Make) for local build orchestration
 - Nix for reproducible development environments
-- GitHub Actions for CI (image build/push to GHCR)
+- GitHub Actions for CI (builds and pushes Docker image to GHCR)
 - ArgoCD + Helm for GitOps deployment to Kubernetes
 
 ### What I learned
 
-This project was an exercise in building a complete, production-grade application with an end-to-end F# stack. A few highlights:
+This project was an exercise in building a complete, production-grade application with an end-to-end F# stack. Key highlights include:
 
-**Contract-first development with Fable.Remoting.** The `Shared` project defines F# interfaces like `IProfileApi` and `ILinkApi` that serve as the single source of truth for both client and server. Fable.Remoting generates typed proxies from these, so there is no manual JSON serialization and domain errors (`AppError`) are shared discriminated unions that the client can pattern-match on directly.
-
-**Elmish architecture at scale.** Each page is an isolated `Model`/`Msg`/`update`/`view` module, composed through a root `Program.fs` that handles routing, auth state, and inter-page coordination. Side effects like toast auto-dismiss timers and clipboard writes are modeled as Elmish commands, keeping the update functions pure.
-
-**Role-based authorization.** The app supports `Standard` and `Admin` roles. The server-side `requireAuthorization` helper checks cookie claims and allows admins to operate on any user's resources. A key detail: when an admin edits another user's profile, operations (like email uniqueness checks) execute against the target user's id, not the admin's own id.
-
-**Client-side route guards.** Rather than letting unauthorized API calls fail with 401s, the Elmish root intercepts private route transitions before any page loads. Unauthenticated users are redirected to login with a toast; authenticated users trying to access another user's page see an error toast and stay on their current page. Admins bypass this check entirely.
+- **Contract-first API:** Using `Fable.Remoting` with shared F# interfaces (`IProfileApi`) eliminates manual JSON serialization and allows both client and server to pattern-match on shared domain errors (`AppError`).
+- **Role-based Authorization:** Implemented admin vs. standard user flows. The backend securely checks cookie claims, allowing admins to modify other users' profiles, while Elmish routes guard unauthorized access client-side.
+- **Azure Blob Storage:** Migrated profile image storage from inline base64 strings to Azure Blob Storage using a dedicated multipart endpoint, with a seamless fallback to a local Azurite emulator during development.
+- **CI-Driven Builds:** Orchestrated parallel frontend (Bun) and backend (.NET) compilation using `Fun.Build` (F# Make), keeping the final Docker container ultra-lean by injecting pre-built artifacts onto an Alpine runner.
 
 ### Continued development
 
-- Migrate profile image storage from inline base64/data URLs to Azure Blob Storage with server-mediated uploads
 - Add comprehensive test coverage (backend integration tests with Testcontainers, Elmish update unit tests, Playwright E2E tests)
 - Local Kubernetes development with Tilt for a production-like inner loop
 
@@ -91,7 +90,9 @@ This project was an exercise in building a complete, production-grade applicatio
 ### Prerequisites
 
 1. [Nix](https://nixos.org/download.html) with [Direnv](https://direnv.net/docs/hook.html) for reproducible tooling
-2. [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) for the database
+2. [Docker & Docker Compose](https://www.docker.com/products/docker-desktop/) for the database and local blob storage (Azurite)
+3. [.NET SDK 9.0](https://dotnet.microsoft.com/download)
+4. [Bun](https://bun.sh/) as the javascript runtime/package manager
 
 ### Running locally
 
@@ -101,26 +102,30 @@ cd link-sharing-app
 direnv allow
 ```
 
-Start the database, backend, and frontend:
+Start the infrastructure (Postgres & Azurite):
 
 ```bash
-docker compose up -d db
-dotnet run --project Backend/Server/backend.fsproj
-cd Client && npm install && npm run dev
+docker compose up -d
+```
+
+Restore tools and run the development pipeline (starts both backend API and Vite frontend):
+
+```bash
+dotnet tool restore
+dotnet fsi build.fsx -p Watch
 ```
 
 - Frontend: http://localhost:5173
 - Backend: http://localhost:5200
 
-Or run everything via Docker Compose:
-
-```bash
-docker compose up --build
-```
-
-- Unified app: http://localhost:5200
-
 A development seed user is created automatically in `Development` mode: `test@example.com` / `secret123` (Admin role).
+
+### Build for Production
+
+To build the project locally (compiles the app to the `/dist` folder):
+```bash
+dotnet fsi build.fsx -p Bundle
+```
 
 ## Database migrations
 

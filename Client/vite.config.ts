@@ -18,7 +18,7 @@ export default defineConfig(() => {
       host: true, // so LAN devices can access
       proxy: {
         '/api': {
-          target: 'http://localhost:5200',
+          target: 'http://localhost:5000',
           changeOrigin: true,
           secure: false,
         }

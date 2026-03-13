@@ -1,0 +1,81 @@
+#r "nuget: Fun.Build, 1.1.2"
+#r "nuget: Fake.IO.FileSystem, 6.0.0"
+
+open System.IO
+open Fake.IO
+open Fake.IO.FileSystemOperators
+open Fun.Build
+
+let deployDir = Path.getFullName "dist"
+
+let restoreStage =
+    stage "Restore" {
+        run "dotnet tool restore"
+        run "dotnet restore"
+        run "cd Client && bun i"
+    }
+
+let clean (input: string seq) =
+    async {
+        input
+        |> Seq.iter (fun dir ->
+            if Directory.Exists(dir) then
+                Directory.Delete(dir, true))
+    }
+
+pipeline "Bundle" {
+    workingDir __SOURCE_DIRECTORY__
+    restoreStage
+    stage "Clean" { run (clean [| "dist"; "Client/dist" |]) }
+
+    stage "Main" {
+        paralle
+
+        stage "Client" {
+            workingDir "Client"
+            run "bun run build"
+        }
+
+        stage "Server" {
+            workingDir "Backend/Server"
+            run $"dotnet publish -c Release -o %s{deployDir} -tl"
+        }
+    }
+
+    // After parallel build finishes, copy the frontend to backend's wwwroot
+    stage "PostBuild" { run $"cp -R Client/dist/* %s{deployDir}/wwwroot/" }
+
+    runIfOnlySpecified false
+}
+
+pipeline "Watch" {
+    workingDir __SOURCE_DIRECTORY__
+    stage "Clean" { run (clean [| "dist"; "Client/dist" |]) }
+    restoreStage
+
+    stage "Main" {
+        paralle
+
+        stage "Client" {
+            workingDir "Client"
+            run "bun run dev"
+        }
+
+        stage "Server" {
+            workingDir "Backend/Server"
+            envVars [ "ASPNETCORE_ENVIRONMENT", "Development" ]
+            run "dotnet watch run -tl"
+        }
+    }
+
+    runIfOnlySpecified true
+}
+
+pipeline "Format" {
+    workingDir __SOURCE_DIRECTORY__
+    stage "Restore" { run "dotnet tool restore" }
+    stage "Fantomas" { run "dotnet fantomas . --exclude Client/node_modules" }
+    runIfOnlySpecified true
+}
+
+tryPrintPipelineCommandHelp ()

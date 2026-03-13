@@ -17,9 +17,23 @@
       "rollForward": false
     },
     "fantomas": {
-      "version": "7.0.3",
+      "version": "7.0.5",
       "commands": [
         "fantomas"
+      ],
+      "rollForward": false
+    },
+    "fake-cli": {
+      "version": "6.1.4",
+      "commands": [
+        "fake"
+      ],
+      "rollForward": false
+    },
+    "fun.build.cli": {
+      "version": "0.1.7",
+      "commands": [
+        "fun-build"
       ],
       "rollForward": false
     }
