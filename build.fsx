@@ -12,7 +12,10 @@ let restoreStage =
     stage "Restore" {
         run "dotnet tool restore"
         run "dotnet restore"
-        run "cd Client && bun i"
+        stage "BunInstall" {
+            workingDir "Client"
+            run "bun i"
+        }
     }
 
 let clean (input: string seq) =
@@ -43,7 +46,10 @@ pipeline "Bundle" {
     }
 
     // After parallel build finishes, copy the frontend to backend's wwwroot
-    stage "PostBuild" { run $"cp -R Client/dist/* %s{deployDir}/wwwroot/" }
+    stage "PostBuild" { 
+        run $"mkdir -p %s{deployDir}/wwwroot"
+        run $"cp -R Client/dist/ %s{deployDir}/wwwroot/" 
+    }
 
     runIfOnlySpecified false
 }
