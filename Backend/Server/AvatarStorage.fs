@@ -67,7 +67,12 @@ type AzureBlobAvatarStorage(configuration: IConfiguration, logger: ILogger<Azure
                     let headers = BlobHttpHeaders(ContentType = contentType)
                     let! _ = blobClient.UploadAsync(stream, headers)
 
-                    return Ok(blobClient.Uri.ToString())
+                    let mutable returnUrl = blobClient.Uri.ToString()
+                    // Workaround for local development using docker-compose: the browser needs to reach localhost, not the docker network alias "azurite"
+                    if returnUrl.Contains("://azurite:10000") then
+                        returnUrl <- returnUrl.Replace("://azurite:10000", "://localhost:10000")
+
+                    return Ok(returnUrl)
                 with ex ->
                     logger.LogError(ex, "Failed to upload avatar for user {UserId}", userId)
                     return Error(Unexpected "Failed to upload avatar to storage")
@@ -80,13 +85,20 @@ type AzureBlobAvatarStorage(configuration: IConfiguration, logger: ILogger<Azure
 
                 try
                     // Basic safety check to ensure we only delete blobs from our container
+                    let mutable urlToCheck = oldUrl
+                    // Translate local dev URL back to container network URL if needed
+                    if urlToCheck.Contains("://localhost:10000") then
+                        urlToCheck <- urlToCheck.Replace("://localhost:10000", "://azurite:10000")
+                    elif urlToCheck.Contains("://127.0.0.1:10000") then
+                        urlToCheck <- urlToCheck.Replace("://127.0.0.1:10000", "://azurite:10000")
+
                     if
-                        oldUrl.StartsWith(
+                        urlToCheck.StartsWith(
                             containerClient.Uri.ToString(),
                             StringComparison.OrdinalIgnoreCase
                         )
                     then
-                        let uri = Uri(oldUrl)
+                        let uri = Uri(urlToCheck)
                         let blobName = uri.Segments.[uri.Segments.Length - 1]
                         let blobClient = containerClient.GetBlobClient(blobName)
                         let! _ = blobClient.DeleteIfExistsAsync()
