@@ -12,6 +12,7 @@ let restoreStage =
     stage "Restore" {
         run "dotnet tool restore"
         run "dotnet restore"
+
         stage "BunInstall" {
             workingDir "Client"
             run "bun i"
@@ -29,14 +30,15 @@ let clean (input: string seq) =
 pipeline "Bundle" {
     workingDir __SOURCE_DIRECTORY__
     restoreStage
-    stage "Clean" { run (clean [| "dist"; "Client/dist" |]) }
+    stage "Clean" { run (clean [| "dist"; "Client/dist"; "Client/.build" |]) }
 
     stage "Main" {
         paralle
 
         stage "Client" {
             workingDir "Client"
-            run "bun run build"
+            // Compile F# first, then bundle with Vite (CI-friendly, no vite-plugin-fable daemon).
+            run "dotnet fable src/src.fsproj -s -o .build --run bunx --bun vite build"
         }
 
         stage "Server" {
@@ -46,9 +48,9 @@ pipeline "Bundle" {
     }
 
     // After parallel build finishes, copy the frontend to backend's wwwroot
-    stage "PostBuild" { 
+    stage "PostBuild" {
         run $"mkdir -p %s{deployDir}/wwwroot"
-        run $"cp -R Client/dist/ %s{deployDir}/wwwroot/" 
+        run $"cp -R Client/dist/ %s{deployDir}/wwwroot/"
     }
 
     runIfOnlySpecified false
@@ -56,7 +58,7 @@ pipeline "Bundle" {
 
 pipeline "Watch" {
     workingDir __SOURCE_DIRECTORY__
-    stage "Clean" { run (clean [| "dist"; "Client/dist" |]) }
+    stage "Clean" { run (clean [| "dist"; "Client/dist"; "Client/.build" |]) }
     restoreStage
 
     stage "Main" {
@@ -64,7 +66,8 @@ pipeline "Watch" {
 
         stage "Client" {
             workingDir "Client"
-            run "bun run dev"
+            // Keep local dev aligned with production compilation path.
+            run "dotnet fable watch src/src.fsproj -s -o .build --run bunx --bun vite"
         }
 
         stage "Server" {

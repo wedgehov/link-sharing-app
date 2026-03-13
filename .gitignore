@@ -35,3 +35,7 @@ appsettings.Development.json
 # Local planning notes (keep file, never commit)
 project-plan.md
 
+
+# Fable build output
+Client/.build/
+
