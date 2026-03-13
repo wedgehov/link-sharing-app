@@ -29,9 +29,7 @@ rec {
       dotnet-sdk
       pkgs.bun
       pkgs.npins
-      # For reproducible Markdown -> PDF exports of docs (e.g., project-plan.md)
-      pkgs.pandoc
-      pkgs.texlive.combined.scheme-small
+      pkgs.nixfmt-rfc-style
     ];
     shellHook = ''
       mkdir -p dist/public
