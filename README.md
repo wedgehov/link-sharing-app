@@ -38,7 +38,8 @@ Users should be able to:
 ### Links
 
 - Solution URL: [https://github.com/wedgehov/link-sharing-app](https://github.com/wedgehov/link-sharing-app)
-- Live Site URL: [https://link-sharing-app-main.vhovet.com](https://link-sharing-app-main.vhovet.com)
+- Live Site URL (Render): [https://link-sharing-app-main.onrender.com](https://link-sharing-app-main.onrender.com)
+- Live Site URL (AKS): [https://link-sharing-app-main.vhovet.com](https://link-sharing-app-main.vhovet.com)
 
 ## My process
 
