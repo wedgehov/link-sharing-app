@@ -50,7 +50,7 @@ pipeline "Bundle" {
     // After parallel build finishes, copy the frontend to backend's wwwroot
     stage "PostBuild" {
         run $"mkdir -p %s{deployDir}/wwwroot"
-        run $"cp -R Client/dist/ %s{deployDir}/wwwroot/"
+        run $"cp -R Client/dist/* %s{deployDir}/wwwroot/"
     }
 
     runIfOnlySpecified false
