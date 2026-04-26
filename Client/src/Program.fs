@@ -312,6 +312,19 @@ let view (model: Model) (dispatch: Msg -> unit) =
         match model.GlobalToast with
         | Some toast -> Ui.Toast.view toast
         | None -> Html.none
+
+        Html.footer [
+          prop.className "w-full py-6 text-center text-sm text-gray-500"
+          prop.children [
+            Html.a [
+              prop.href "https://github.com/wedgehov/link-sharing-app"
+              prop.target "_blank"
+              prop.rel "noopener noreferrer"
+              prop.className "hover:text-gray-900 transition-colors underline underline-offset-2"
+              prop.text "View on GitHub"
+            ]
+          ]
+        ]
       ]
     ]
   ]
