@@ -314,14 +314,19 @@ let view (model: Model) (dispatch: Msg -> unit) =
         | None -> Html.none
 
         Html.footer [
-          prop.className "w-full py-6 text-center text-sm text-gray-500"
+          prop.className
+            "w-full border-t border-gray-200 bg-white/80 px-6 py-5 text-center text-sm font-semibold text-gray-700"
           prop.children [
             Html.a [
               prop.href "https://github.com/wedgehov/link-sharing-app"
               prop.target "_blank"
               prop.rel "noopener noreferrer"
-              prop.className "hover:text-gray-900 transition-colors underline underline-offset-2"
-              prop.text "View on GitHub"
+              prop.className
+                "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              prop.children [
+                Ui.Icon.view Ui.Icon.Name.GitHub "GitHub" (Some "h-4 w-4")
+                Html.span "View source on GitHub"
+              ]
             ]
           ]
         ]
